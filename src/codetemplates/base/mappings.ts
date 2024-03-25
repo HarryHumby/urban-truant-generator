@@ -1,29 +1,33 @@
-export default `- dataSource: Dynamo_SCO_STUDENT_\${sls:stage}
+export default `# CREATE
+- dataSource: Dynamo_SCO_<% upperCaseName %>_\${sls:stage}
   type: Mutation
-  field: createStudent
-  request: "student/base/vtl/create/req.vtl"
-  response: "student/base/vtl/create/res.vtl"
+  field: create<% pascalCaseName %>
+  request: "<% camelCaseName %>/base/vtl/create/req.vtl"
+  response: "<% camelCaseName %>/base/vtl/create/res.vtl"
 
-- dataSource: Dynamo_SCO_STUDENT_\${sls:stage}
-  type: Mutation
-  field: deleteStudent
-  request: "student/base/vtl/delete/req.vtl"
-  response: "student/base/vtl/delete/res.vtl"
-
-- dataSource: Dynamo_SCO_STUDENT_\${sls:stage}
-  type: Mutation
-  field: updateStudent
-  request: "student/base/vtl/update/req.vtl"
-  response: "student/base/vtl/update/res.vtl"
-
-- dataSource: Dynamo_SCO_STUDENT_\${sls:stage}
+# READ
+- dataSource: Dynamo_SCO_<% upperCaseName %>_\${sls:stage}
   type: Query
-  field: getStudent
-  request: "student/base/vtl/get/req.vtl"
-  response: "student/base/vtl/get/res.vtl"
+  field: get<% pascalCaseName %>
+  request: "<% camelCaseName %>/base/vtl/get/req.vtl"
+  response: "<% camelCaseName %>/base/vtl/get/res.vtl"
 
-- dataSource: Dynamo_SCO_STUDENT_\${sls:stage}
+- dataSource: Dynamo_SCO_<% upperCaseName %>_\${sls:stage}
   type: Query
-  field: getStudents
-  request: "student/base/vtl/getStudents/req.vtl"
-  response: "student/base/vtl/getStudents/res.vtl"`
+  field: get<% pascalCaseName %>s
+  request: "<% camelCaseName %>/base/vtl/get<% pascalCaseName %>s/req.vtl"
+  response: "<% camelCaseName %>/base/vtl/get<% pascalCaseName %>s/res.vtl"
+
+# UPDATE
+- dataSource: Dynamo_SCO_<% upperCaseName %>_\${sls:stage}
+  type: Mutation
+  field: update<% pascalCaseName %>
+  request: "<% camelCaseName %>/base/vtl/update/req.vtl"
+  response: "<% camelCaseName %>/base/vtl/update/res.vtl"
+
+# DELETE
+- dataSource: Dynamo_SCO_<% upperCaseName %>_\${sls:stage}
+  type: Mutation
+  field: delete<% pascalCaseName %>
+  request: "<% camelCaseName %>/base/vtl/delete/req.vtl"
+  response: "<% camelCaseName %>/base/vtl/delete/res.vtl"`

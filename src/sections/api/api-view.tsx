@@ -30,12 +30,12 @@ email: string;`, tenantId: true, limit: "20"
   const [templateData, setTemplateData] = useState({});
   const [compiledTemplates, setCompiledTemplates] = useState([]);
 
-  // TODO: HH: Only the lamdba templates are currently correct, teh vtls, mappings, and schema are not done yet
+  // TODO: HH: Only the lamdba templates are currently correct, teh vtls, and schema are not done yet
 
   // Vtl is not supported atm, javascript colours look decent
   const activeTemplates = [
     { name: "base/schema", value: schemaTemplate, language: "javascript" },
-    { name: "base/mappingsTemplate", value: mappingsTemplate, language: "javascript" },
+    { name: "base/mappings", value: mappingsTemplate, language: "javascript" },
     { name: "base/lambda/dynamodb", value: dynamodbTemplate, language: "javascript" },
     { name: "base/lambda/types", value: typesTemplate, language: "javascript" },
     { name: "base/vtl/create/req", value: vtlCreateReqTemplate, language: "javascript" },
@@ -136,7 +136,6 @@ email: string;`, tenantId: true, limit: "20"
         Template Data
       </AccordionSummary>
       <AccordionDetails
-        expandIcon={<ExpandMoreIcon />}
         id={"templateData"}
       >
         <Box sx={{ bgcolor: "primary.dark", borderRadius: 2, padding: "20px" }}>
