@@ -1,8 +1,9 @@
 'use client';
 
-import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails, MenuItem } from '@mui/material';
+import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails, MenuItem, Tabs, Tab } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import React, { useState, useEffect } from 'react';
+// TODO: HH: Move these into an index and import all from one file
 import apiBaseSchemaTemplate from 'src/codetemplates/api/base/schema';
 import apiBaseMappingsTemplate from 'src/codetemplates/api/base/mappings';
 import apiBaseDynamodbTemplate from 'src/codetemplates/api/base/lambda/dynamodb';
@@ -19,21 +20,23 @@ import uiBaseIndexTemplate from 'src/codetemplates/ui/base/index';
 import uiBaseTypesTemplate from 'src/codetemplates/ui/base/types';
 import uiClientTemplate from 'src/codetemplates/ui/client';
 import uiIndexTemplate from 'src/codetemplates/ui/index';
-import _ from 'lodash';
+import _, { template } from 'lodash';
 import Prism from 'prismjs';
 import "prismjs/themes/prism-tomorrow.css";
-import { Key } from '@mui/icons-material';
 import uuidv4 from 'src/utils/uuidv4';
 
 export default function GeneratorVIew() {
-  // TODO: HH: Turn dataPattern into a nice ui instead of just a textarea
-  const [data, setData] = useState({
-    name: "Instructor", hash: "#I#", dataPattern: { fields: [{ id: uuidv4(), key: "id", type: "string" }, { id: uuidv4(), key: "firstName", type: "string" }, { id: uuidv4(), key: "lastName", type: "string" }, { id: uuidv4(), key: "email", type: "string" }] }, tenantId: true, limit: "20"
-  });
+  const [entities, setEntities] = useState([{
+    name: "Instructor", hash: "I", dataPattern: { fields: [{ id: uuidv4(), key: "id", type: "string" }] }, tenantId: true, limit: "20"
+  }, {
+    name: "Student", hash: "S", dataPattern: { fields: [{ id: uuidv4(), key: "id", type: "string" }] }, tenantId: true, limit: "20"
+  }]);
 
   const [templateData, setTemplateData] = useState({});
   const [compiledTemplates, setCompiledTemplates] = useState([]);
+  const [currentTabIndex, setCurrentTabIndex] = useState(0);
 
+  // TODO: HH: Move this into a seperate file
   // Vtl is not supported atm, javascript colours look decent
   const activeTemplates = [
     { name: "api/base/schema", value: apiBaseSchemaTemplate, language: "javascript" },
@@ -57,48 +60,43 @@ export default function GeneratorVIew() {
     { name: "ui/services/index", value: uiIndexTemplate, language: "javascript" },
   ];
 
-  const onTextChange = (e: any) => {
-    let dataUpdate = { [e.target.name]: e.target.value };
-    setData({ ...data, ...dataUpdate });
-  }
-
-  const onCheckboxChange = (e: any) => {
-    let dataUpdate = { [e.target.name]: e.target.checked };
-    setData({ ...data, ...dataUpdate });
-  }
-
   const updateTemplateData = () => {
-
     const newTemplateData: any = {};
-    let dataPatternFields = ``;
 
-    data.dataPattern.fields.forEach((field) => {
-      dataPatternFields += `${field.key}: ${field.type};\n`;
+    entities.forEach((entity) => {
+      const newEntityTemplateData: any = {};
+      let dataPatternFields = ``;
+      entity.dataPattern.fields.forEach((field) => {
+        dataPatternFields += `${field.key}: ${field.type};\n`;
+      })
+
+      newEntityTemplateData["camelCaseName"] = _.camelCase(entity.name);
+      newEntityTemplateData["pascalCaseName"] = _.capitalize(_.camelCase(entity.name));
+      newEntityTemplateData["upperCaseName"] = entity.name.toUpperCase();
+      newEntityTemplateData["hash"] = `#${entity.hash}#`;
+      newEntityTemplateData["tenantHash"] = entity.tenantId ? "#T#" : "";
+      newEntityTemplateData["tenantId"] = entity.tenantId ? "${tenantId}" : "";
+      newEntityTemplateData["dataPatternFields"] = dataPatternFields;
+      newEntityTemplateData["dataPatternFieldsCreate"] = dataPatternFields.replace("id: string;\n", "");
+      newEntityTemplateData["dataPatternFieldsUpdate"] = dataPatternFields.replaceAll(":", "?:").replaceAll("id?:", "id:");
+      newEntityTemplateData["dataPatternFieldsGraphQL"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number");
+      newEntityTemplateData["dataPatternFieldsGraphQLCreate"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number").replace("id: String", "id: String!");
+      newEntityTemplateData["dataPatternFieldsGraphQLUpdate"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number").replace("id: String", "id: String!");
+      newEntityTemplateData["dataPatternFieldsGraphQLGet"] = "id: String!";
+      newEntityTemplateData["dataPatternFieldsGraphQLDelete"] = "id: String!";
+      newEntityTemplateData["dataPatternFieldsUIGraphQL"] = dataPatternFields.replaceAll(": string;", "").replaceAll(": boolean;", "Boolean");
+      // TODO: HH: Implement limit
+      newEntityTemplateData["limit"] = entity.limit;
+
+      newTemplateData[entity.name] = newEntityTemplateData;
     })
 
-    newTemplateData["camelCaseName"] = _.camelCase(data.name);
-    newTemplateData["pascalCaseName"] = _.capitalize(_.camelCase(data.name));
-    newTemplateData["upperCaseName"] = data.name.toUpperCase();
-    newTemplateData["hash"] = data.hash;
-    newTemplateData["tenantHash"] = data.tenantId ? "#T#" : "";
-    newTemplateData["tenantId"] = data.tenantId ? "${tenantId}" : "";
-    newTemplateData["dataPatternFields"] = dataPatternFields;
-    newTemplateData["dataPatternFieldsCreate"] = dataPatternFields.replace("id: string;\n", "");
-    newTemplateData["dataPatternFieldsUpdate"] = dataPatternFields.replaceAll(":", "?:").replaceAll("id?:", "id:");
-    newTemplateData["dataPatternFieldsGraphQL"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number");
-    newTemplateData["dataPatternFieldsGraphQLCreate"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number").replace("id: String", "id: String!");
-    newTemplateData["dataPatternFieldsGraphQLUpdate"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number").replace("id: String", "id: String!");
-    newTemplateData["dataPatternFieldsGraphQLGet"] = "id: String!";
-    newTemplateData["dataPatternFieldsGraphQLDelete"] = "id: String!";
-    newTemplateData["dataPatternFieldsUIGraphQL"] = dataPatternFields.replaceAll(": string;", "").replaceAll(": boolean;", "Boolean");
-    // TODO: Implement limit
-    newTemplateData["limit"] = data.limit;
     setTemplateData(newTemplateData);
   }
 
   useEffect(() => {
     updateTemplateData();
-  }, [data])
+  }, [entities])
 
   useEffect(() => {
     generate();
@@ -106,169 +104,238 @@ export default function GeneratorVIew() {
 
   useEffect(() => {
     Prism.highlightAll();
-  }, [compiledTemplates])
+  }, [compiledTemplates, currentTabIndex])
 
   const download = () => {
     navigator.clipboard.writeText(compiledTemplates[compiledTemplates.length - 1]?.value);
   }
 
   const generate = () => {
-    let compiledTemplates = activeTemplates.map((activeTemplate) => {
-      const { name, value, language } = activeTemplate;
-      let compiledTemplate = value;
-      Object.entries(templateData).forEach((template) => {
-        const [key, value] = template;
-        compiledTemplate = compiledTemplate.replaceAll(`<% ${key} %>`, value);
-      })
-      const templateStatements = compiledTemplate.match(/<% if .* %>/g);
-      if (templateStatements && templateStatements.length) {
-        templateStatements.forEach((templateStatement) => {
-          const splitTemplateStatement = templateStatement.split(" ");
-          // remove <%,if,%>  
-          splitTemplateStatement.shift();
-          const statement = splitTemplateStatement.shift();
-          splitTemplateStatement.pop();
-          // get the field and the string to use if truthy
-          const templateDataField = splitTemplateStatement.shift();
-          const templateDataInsert = splitTemplateStatement.join(" ");
-          if (templateDataField?.charAt(0) === "!") {
-            if (templateData[templateDataField.slice(1)]) {
-              // if field is truthy remove the string
-              compiledTemplate = compiledTemplate.replace(templateStatement, "");
-            } else {
-              // if field is falsy keep the string to the right
-              compiledTemplate = compiledTemplate.replace(templateStatement, templateDataInsert);
-            }
-          } else {
-            if (templateData[templateDataField]) {
-              // if field is truthy keep the string to the right
-              compiledTemplate = compiledTemplate.replace(templateStatement, templateDataInsert);
-            } else {
-              // if field is falsy remove the string
-              compiledTemplate = compiledTemplate.replace(templateStatement, "");
-            }
-          }
+    let newCompiledTemplates = {};
+    if (_.isEmpty(templateData)) {
+      return;
+    }
+    entities.forEach((entity: any) => {
+      const entityCompiledTemplates = activeTemplates.map((activeTemplate) => {
+        const { name, value, language } = activeTemplate;
+        let entityCompiledTemplate = value;
+        Object.entries(templateData[entity.name]).forEach((template) => {
+          const [key, value] = template;
+          entityCompiledTemplate = entityCompiledTemplate.replaceAll(`<% ${key} %>`, value);
         })
-      }
-      // remove the blocks of linebreaks that results when removing content from the template
-      compiledTemplate = compiledTemplate.replace(/\n+/g, "\n");
-      return { name, value: compiledTemplate, language };
+        const templateStatements = entityCompiledTemplate.match(/<% if .* %>/g);
+        if (templateStatements && templateStatements.length) {
+          templateStatements.forEach((templateStatement) => {
+            const splitTemplateStatement = templateStatement.split(" ");
+            // remove <%,if,%>  
+            splitTemplateStatement.shift();
+            const statement = splitTemplateStatement.shift();
+            splitTemplateStatement.pop();
+            // get the field and the string to use if truthy
+            const templateDataField = splitTemplateStatement.shift();
+            const templateDataInsert = splitTemplateStatement.join(" ");
+            if (templateDataField?.charAt(0) === "!") {
+              if (templateData[templateDataField.slice(1)]) {
+                // if field is truthy remove the string
+                entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, "");
+              } else {
+                // if field is falsy keep the string to the right
+                entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, templateDataInsert);
+              }
+            } else {
+              if (templateData[templateDataField]) {
+                // if field is truthy keep the string to the right
+                entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, templateDataInsert);
+              } else {
+                // if field is falsy remove the string
+                entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, "");
+              }
+            }
+          })
+        }
+        // remove the blocks of linebreaks that results when removing content from the template
+        entityCompiledTemplate = entityCompiledTemplate.replace(/\n+/g, "\n");
+        return { name, value: entityCompiledTemplate, language };
+      })
+      newCompiledTemplates[entity.name] = entityCompiledTemplates;
     })
-    setCompiledTemplates(compiledTemplates);
+
+    setCompiledTemplates(newCompiledTemplates);
   }
 
-  const onSelectDataPatternFieldKeyChange = (fieldId: string, e: any) => {
-    const dataPattern = { ...data.dataPattern };
-    dataPattern.fields = dataPattern.fields.map((field) => {
+  const onTextChange = (index: number, e: any) => {
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index][e.target.name] = e.target.value;
+    setEntities(entitiesUpdate);
+  };
+
+  const onCheckboxChange = (index: number, e: any) => {
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index][e.target.name] = e.target.checked;
+    setEntities(entitiesUpdate);
+  }
+
+  const onSelectDataPatternFieldKeyChange = (index: number, fieldId: string, e: any) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern.fields = newDataPattern.fields.map((field) => {
       // Find the field thats being updated
       if (field.id === fieldId) {
         field.key = e.target.value;
       }
       return field;
     })
-    setData({ ...data, ...{ dataPattern } });
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
   }
 
-  const onSelectDataPatternFieldTypeChange = (fieldId: string, e: any) => {
-    const dataPattern = { ...data.dataPattern };
-    dataPattern.fields = dataPattern.fields.map((field) => {
+  const onSelectDataPatternFieldTypeChange = (index: number, fieldId: string, e: any) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern.fields = newDataPattern.fields.map((field) => {
       // Find the field thats being updated
       if (field.id === fieldId) {
         field.type = e.target.value;
       }
       return field;
     })
-    setData({ ...data, ...{ dataPattern } });
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
   }
 
-  const onSelectDataPatternFieldRemove = (fieldId: string, e: any) => {
-    const dataPattern = { ...data.dataPattern };
-    dataPattern.fields = dataPattern.fields.filter((field) => {
+  const onSelectDataPatternFieldRemove = (index: number, fieldId: string, e: any) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern.fields = newDataPattern.fields.filter((field) => {
       // Find the field thats being removed
       if (field.id === fieldId) {
         return;
       }
       return field;
     })
-    setData({ ...data, ...{ dataPattern } });
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
   }
 
-  const onSelectDataPatternFieldAdd = (e: any) => {
-    const dataPattern = { ...data.dataPattern };
-    dataPattern.fields.push({ id: uuidv4(), key: uuidv4(), type: "string" });
-    setData({ ...data, ...{ dataPattern } });
+  const onSelectDataPatternFieldAdd = (index: number, e: any) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern.fields.push({ id: uuidv4(), key: uuidv4(), type: "string" });
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
+  }
+
+  const handleTabChange = (e, tabIndex) => {
+    setCurrentTabIndex(tabIndex);
   }
 
   return (<React.Fragment>
-    <h1>Generator</h1>
-    <Accordion key={"templateData"}>
-      <AccordionSummary
-        expandIcon={<ExpandMoreIcon />}
-        id={"templateData"}
-      >
-        Template Data
-      </AccordionSummary>
-      <AccordionDetails
-        id={"templateData"}
-      >
-        <Box sx={{ bgcolor: "primary.dark", borderRadius: 2, padding: "20px" }}>
-          {Object.entries(templateData).filter((x) => { return x[1] }).map((template) => {
-            const [key, value] = template;
-            return <p key={key}>{key}: {value}</p>
-          })}
-        </Box>
-      </AccordionDetails>
-    </Accordion>
+    <Box>
+      <h1>Generator</h1>
+      <Button sx={{ position: "relative", top: "-65px", float: "right" }} color={"primary"} variant="contained" onClick={download}>Download</Button>
+    </Box>
+    <Tabs value={currentTabIndex} onChange={handleTabChange}>
+      {entities.map((entity) => {
+        return <Tab key={entity.name} label={entity.name} />
+      })}
+    </Tabs>
+    <Box>
+      {/* Removed for now as the templateData box is a little glitchy between rerenders */}
+      {/* {!_.isEmpty(templateData) && templateData[entities[currentTabIndex]?.name] && <Accordion key={"templateData"}>
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon />}
+          id={"templateData"}
+        >
+          Template Data
+        </AccordionSummary>
+        <AccordionDetails
+          id={"templateData"}
+        >
+          <Box sx={{ bgcolor: "primary.dark", borderRadius: 2, padding: "20px" }}>
+            {Object.entries(templateData[entities[currentTabIndex].name]).filter((x) => { return x[1] }).map((template) => {
+              const [key, value] = template;
+              return <p key={key}>{key}: {value}</p>
+            })}
+          </Box>
+        </AccordionDetails>
+      </Accordion>} */}
 
-    <h2>Configuration</h2>
-    <Box>
-      <h3>Basic</h3>
-      <TextField label={"Name"} name={"name"} value={data.name} onChange={onTextChange}></TextField>
-      <TextField label={"Hash"} name={"hash"} value={data.hash} onChange={onTextChange}></TextField>
-      TenantId?: <Checkbox name={"tenantId"} checked={data.tenantId} onChange={onCheckboxChange} ></Checkbox>
-      <TextField label={"Limit"} name={"limit"} value={data.limit} onChange={onTextChange}></TextField>
-      <h3>Data Pattern</h3>
-      {data?.dataPattern?.fields.map((field) => {
-        return <Box key={field.id}>
-          <TextField name={"key"} value={field.key} disabled={field.id === data.dataPattern.fields[0].id} onChange={(e) => {
-            onSelectDataPatternFieldKeyChange(field.id, e);
-          }} />
-          <TextField name={"type"} value={field.type} disabled={field.id === data.dataPattern.fields[0].id} onChange={(e) => {
-            onSelectDataPatternFieldTypeChange(field.id, e);
-          }} select>
-            <MenuItem value="string" >string</MenuItem>
-            <MenuItem value="boolean">boolean</MenuItem>
-            <MenuItem value="number">number</MenuItem>
-          </TextField>
-          {field.id !== data.dataPattern.fields[0].id && <Button variant="contained" color='error' onClick={(e) => {
-            onSelectDataPatternFieldRemove(field.id, e);
-          }}>Remove</Button>}
-        </Box>
-      })}
-      <Button variant="contained" color='primary' onClick={(e) => {
-        onSelectDataPatternFieldAdd(e);
-      }}>Add</Button>
+      <h2>Configuration</h2>
+      <Box>
+        <h3>Basic</h3>
+        <TextField
+          label={"Name"}
+          name={"name"}
+          value={entities[currentTabIndex].name}
+          onChange={(e) => {
+            onTextChange(currentTabIndex, e);
+          }}>
+        </TextField>
+        <TextField
+          label={"Hash"}
+          name={"hash"}
+          value={entities[currentTabIndex].hash}
+          onChange={(e) => {
+            onTextChange(currentTabIndex, e);
+          }}>
+        </TextField>
+        <TextField
+          label={"Limit"}
+          name={"limit"}
+          value={entities[currentTabIndex].limit}
+          onChange={(e) => {
+            onTextChange(currentTabIndex, e);
+          }}>
+        </TextField>
+        TenantId?: <Checkbox
+          name={"tenantId"}
+          checked={entities[currentTabIndex].tenantId}
+          onChange={(e) => {
+            onCheckboxChange(currentTabIndex, e);
+          }} >
+        </Checkbox>
+        <h3>Data Pattern</h3>
+        {entities[currentTabIndex].dataPattern?.fields.map((field) => {
+          return <Box key={field.id}>
+            <TextField name={"key"} value={field.key} disabled={field.id === entities[currentTabIndex].dataPattern.fields[0].id} onChange={(e) => {
+              onSelectDataPatternFieldKeyChange(currentTabIndex, field.id, e);
+            }} />
+            <TextField name={"type"} value={field.type} disabled={field.id === entities[currentTabIndex].dataPattern.fields[0].id} onChange={(e) => {
+              onSelectDataPatternFieldTypeChange(currentTabIndex, field.id, e);
+            }} select>
+              <MenuItem value="string" >string</MenuItem>
+              <MenuItem value="boolean">boolean</MenuItem>
+              <MenuItem value="number">number</MenuItem>
+            </TextField>
+            {field.id !== entities[currentTabIndex].dataPattern.fields[0].id && <Button variant="contained" color='error' onClick={(e) => {
+              onSelectDataPatternFieldRemove(currentTabIndex, field.id, e);
+            }}>Remove</Button>}
+          </Box>
+        })}
+        <Button variant="contained" color='primary' onClick={(e) => {
+          onSelectDataPatternFieldAdd(currentTabIndex, e);
+        }}>Add</Button>
+      </Box>
+      <h2>Preview</h2>
+      <Box>
+        {compiledTemplates[entities[currentTabIndex]?.name] && compiledTemplates[entities[currentTabIndex]?.name].length && compiledTemplates[entities[currentTabIndex].name].map((compiledTemplate) => {
+          const { name, value, language } = compiledTemplate;
+          return <Accordion key={name}>
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              id={name}
+            >
+              {name}
+            </AccordionSummary>
+            <AccordionDetails
+              id={name}
+            >
+              <pre><code className={`language-${language}`}>{value}</code></pre>
+            </AccordionDetails>
+          </Accordion>
+        })}
+      </Box>
     </Box>
-    <h2>Preview</h2>
-    <Box>
-      {compiledTemplates.map((compiledTemplate) => {
-        const { name, value, language } = compiledTemplate;
-        return <Accordion key={name}>
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon />}
-            id={name}
-          >
-            {name}
-          </AccordionSummary>
-          <AccordionDetails
-            id={name}
-          >
-            <pre><code className={`language-${language}`}>{value}</code></pre>
-          </AccordionDetails>
-        </Accordion>
-      })}
-    </Box>
-    <Button onClick={download}>Download</Button>
-  </React.Fragment>
+  </React.Fragment >
   );
 }
