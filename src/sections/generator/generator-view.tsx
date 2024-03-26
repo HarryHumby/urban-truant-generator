@@ -18,7 +18,7 @@ import _ from 'lodash';
 import Prism from 'prismjs';
 import "prismjs/themes/prism-tomorrow.css";
 
-export default function APIVIew() {
+export default function GeneratorVIew() {
   // TODO: HH: Turn dataPattern into a nice ui instead of just a textarea
   const [data, setData] = useState({
     name: "Instructor", hash: "#I#", dataPatternFields: `id: string;
@@ -127,7 +127,7 @@ email: string;`, tenantId: true, limit: "20"
   }
 
   return (<React.Fragment>
-    <h1>API</h1>
+    <h1>Generator</h1>
     <Accordion key={"templateData"}>
       <AccordionSummary
         expandIcon={<ExpandMoreIcon />}

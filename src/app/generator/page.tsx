@@ -1,11 +1,11 @@
 import { Typography } from "@mui/material";
-import {UIView} from "../../sections/ui";
+import { GeneratorView } from "../../sections/generator";
 
 export const metadata = {
-  title: 'UI',
+  title: 'GENERATOR',
 };
 
 export default function Page() {
 
-  return <UIView />
+  return <GeneratorView />
 }

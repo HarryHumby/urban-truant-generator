@@ -1,7 +1,6 @@
 const ROOTS = {
   DASHBOARD: '/dashboard',
-  API: '/api',
-  UI: '/ui',
+  GENERATOR: '/generator',
 };
 
 export const paths = {
@@ -9,12 +8,8 @@ export const paths = {
   dashboard: {
     root: ROOTS.DASHBOARD,
   },
-  // API
-  api: {
-    root: ROOTS.API,
-  },
-  // UI
-  ui: {
-    root: ROOTS.UI,
+  // GENERATOR
+  generator: {
+    root: ROOTS.GENERATOR,
   },
 };

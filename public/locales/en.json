@@ -23,6 +23,5 @@
     "clickToSelect": "Click to select",
     "browse": "Browse",
     "menuItem.dashboard": "Dashboard",
-    "menuItem.api": "API",
-    "menuItem.ui": "UI"
+    "menuItem.generator": "Generator"
 }
