@@ -1,17 +1,17 @@
 export default `#set( $id_ = $ctx.args.input.id )
-#set( $tenantId_ = $util.defaultIfNullOrEmpty($context.identity.claims.get("custom:tenantId"), $ctx.args.input.tenantId))
-#if( $util.isNullOrEmpty($tenantId_) )
-	$util.error("Tennant is required")
-#end
-#set( $obj.tenantId = $tenantId_ )
+<% if tenantId #set( $tenantId_ = $util.defaultIfNullOrEmpty($context.identity.claims.get("custom:tenantId"), $ctx.args.input.tenantId)) %>
+<% if tenantId #if( $util.isNullOrEmpty($tenantId_) ) %>
+<% if tenantId 	$util.error("Tennant is required") %>
+<% if tenantId #end %>
+<% if tenantId #set( $obj.tenantId = $tenantId_ ) %>
 
-#set( $et = "STUDENT")
-#set( $prefix_ = "#STU#")
+#set( $et = "<% upperCaseName %>")
+#set( $prefix_ = "<% hash %>")
 #set( $user = $util.defaultIfNullOrEmpty($context.identity.username, "API"))
 #set( $today = $util.time.nowISO8601() )
-#set( $T_HASH_ = "#T#")
-#set( $P_HASH_ = "#P#")
-#set( $pk = "$T_HASH_$tenantId_$prefix_")
+<% if tenantId #set( $T_HASH_ = "#T#") %>
+<% if tenantId #set( $pk = "$T_HASH_$tenantId_$prefix_") %>
+<% if !tenantId #set( $pk = "$prefix_") %>
 #set( $sk = "$prefix_$id_")
 
 {
@@ -38,45 +38,7 @@ export default `#set( $id_ = $ctx.args.input.id )
 			#end
 		#end
 
-		#if( $entry.key == "lastName")
-			#if( $util.isNullOrEmpty($ctx.args.input.lastName) )
-				$util.error("lastName is required")
-			#end
-			#if( $util.isNullOrEmpty($ctx.args.input.firstName) )
-				$util.error("firstName is required")
-			#end
-			#set( $lastname_ = $util.str.toReplace($util.defaultIfNullOrEmpty($ctx.args.input.lastName, "").toLowerCase(), " ", ""))
-			#set( $firstname_ = $util.str.toReplace($util.defaultIfNullOrEmpty($ctx.args.input.firstName, "").toLowerCase(), " ", ""))
-
-			#set( $gsi1sk = "GSI1_SK" )
-			#set( $gsi1_sk = "$lastname_$firstname_")
-			$!{expSet.put("#\${gsi1sk}", ":\${gsi1sk}")}
-			$!{expNames.put("#\${gsi1sk}", "\${gsi1sk}")}
-			$!{expValues.put(":\${gsi1sk}", $util.dynamodb.toDynamoDB(\${gsi1_sk}))}
-		#end
-
-		#if( $entry.key == "email")
-			#if( $util.isNullOrEmpty($ctx.args.input.email) )
-				$util.error("email is required")
-			#end
-			#set( $email_ = $util.str.toReplace($util.defaultIfNullOrEmpty($ctx.args.input.email, "").toLowerCase(), " ", ""))
-
-			#set( $gsi2sk = "GSI2_SK" )
-			#set( $gsi2_sk = "$email_")
-			$!{expSet.put("#\${gsi2sk}", ":\${gsi2sk}")}
-			$!{expNames.put("#\${gsi2sk}", "\${gsi2sk}")}
-			$!{expValues.put(":\${gsi2sk}", $util.dynamodb.toDynamoDB(\${gsi2_sk}))}
-		#end
-
-		#if( $entry.key == "partnerId")
-			#set( $partnerId_ = $ctx.args.input.partnerId )
-			#set( $gsi3sk = "GSI3_SK" )
-			#set( $gsi3_sk = "$P_HASH_$partnerId_")
-			$!{expSet.put("#\${gsi3sk}", ":\${gsi3sk}")}
-			$!{expNames.put("#\${gsi3sk}", "\${gsi3sk}")}
-			$!{expValues.put(":\${gsi3sk}", $util.dynamodb.toDynamoDB(\${gsi3_sk}))}
-		#end
-
+		// TODO: HH: Will need to add some logic for gsi's
 	#end
 
 	#set( $savedOn = "so" )

@@ -71,7 +71,11 @@ email: string;`, tenantId: true, limit: "20"
     newTemplateData["tenantId"] = data.tenantId ? "${tenantId}" : "";
     newTemplateData["dataPatternFields"] = data.dataPatternFields;
     newTemplateData["dataPatternFieldsCreate"] = data.dataPatternFields.replace("id: string;\n", "");
-    newTemplateData["dataPatternFieldsUpdate"] = data.dataPatternFields.replaceAll(":", "?:").replaceAll("id?:", "id:");
+    newTemplateData["dataPatternFieldsGraphQL"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean");
+    newTemplateData["dataPatternFieldsGraphQLCreate"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replace("id: String", "id: String!");
+    newTemplateData["dataPatternFieldsGraphQLUpdate"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replace("id: String", "id: String!");
+    newTemplateData["dataPatternFieldsGraphQLGet"] = "id: String!";
+    newTemplateData["dataPatternFieldsGraphQLDelete"] = "id: String!";
     // TODO: Implement limit
     newTemplateData["limit"] = data.limit;
     setTemplateData(newTemplateData);
@@ -112,15 +116,27 @@ email: string;`, tenantId: true, limit: "20"
           // get the field and the string to use if truthy
           const templateDataField = splitTemplateStatement.shift();
           const templateDataInsert = splitTemplateStatement.join(" ");
-          if (templateData[templateDataField]) {
-            // if field is truthy keep the string to the right
-            compiledTemplate = compiledTemplate.replace(templateStatement, templateDataInsert);
+          if (templateDataField?.charAt(0) === "!") {
+            if (templateData[templateDataField.slice(1)]) {
+              // if field is truthy remove the string
+              compiledTemplate = compiledTemplate.replace(templateStatement, "");
+            } else {
+              // if field is falsy keep the string to the right
+              compiledTemplate = compiledTemplate.replace(templateStatement, templateDataInsert);
+            }
           } else {
-            // if field is falsy remove the string
-            compiledTemplate = compiledTemplate.replace(templateStatement, "");
+            if (templateData[templateDataField]) {
+              // if field is truthy keep the string to the right
+              compiledTemplate = compiledTemplate.replace(templateStatement, templateDataInsert);
+            } else {
+              // if field is falsy remove the string
+              compiledTemplate = compiledTemplate.replace(templateStatement, "");
+            }
           }
         })
       }
+      // remove the blocks of linebreaks that results when removing content from the template
+      compiledTemplate = compiledTemplate.replace(/\n+/g, "\n");
       return { name, value: compiledTemplate, language };
     })
     setCompiledTemplates(compiledTemplates);

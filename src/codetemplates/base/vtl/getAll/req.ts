@@ -1,17 +1,16 @@
-export default `#set( $et = "STUDENT")
-#set( $prefix_ = "#STU#")
+export default `#set( $et = "<% upperCaseName %>")
+#set( $prefix_ = "<% hash %>")
 
-#set( $T_HASH_ = "#T#")
-#set( $tenantId_ = $util.defaultIfNullOrEmpty($context.identity.claims.get("custom:tenantId"), $ctx.args.input.tenantId))
-#if( $util.isNullOrEmpty($tenantId_) )
-	$util.error("Tennant is required")
-#end
-#set( $obj.tenantId = $tenantId_ )
-#set( $lastName_ = $util.str.toReplace($util.defaultIfNullOrEmpty($ctx.args.input.lastName, "").toLowerCase(), " ", ""))
-#set( $firstName_ = $util.str.toReplace($util.defaultIfNullOrEmpty($ctx.args.input.firstName, "").toLowerCase(), " ", ""))
-#set( $pk = "$T_HASH_$tenantId_$prefix_")
-#set( $sk = "$lastName_$firstName_")
+<% if tenantId #set( $T_HASH_ = "#T#") %>
+<% if tenantId #set( $tenantId_ = $util.defaultIfNullOrEmpty($context.identity.claims.get("custom:tenantId"), $ctx.args.input.tenantId)) %>
+<% if tenantId #if( $util.isNullOrEmpty($tenantId_) ) %>
+<% if tenantId 	$util.error("Tennant is required") %>
+<% if tenantId #end %>
+<% if tenantId #set( $obj.tenantId = $tenantId_ ) %>
+<% if tenantId #set( $pk = "$T_HASH_$tenantId_$prefix_") %>
+<% if !tenantId #set( $pk = "$prefix_") %>
 
+// TODO: HH: Setup GSI1 adn GSI2 correctly
 #if( $util.isNullOrEmpty($sk))
 	#set( $condition = "GSI1_PK = :pk" )
 	#set( $expressionValues = {":pk": { "S": "$pk" }})

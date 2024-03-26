@@ -3,16 +3,8 @@ export default `schema {
 	mutation: Mutation
 }
 
-type Student @aws_cognito_user_pools {
-	id: String
-	firstName: String
-	lastName: String
-	email: String
-	phoneNumber: String
-	cognitoUser: String
-	noReview: Boolean
-	addresses: [Address]
-	partnerId: String
+type <% pascalCaseName %> @aws_cognito_user_pools {
+	<% dataPatternFieldsGraphQL %>
 	cb: String
 	sb: String
 	co: String
@@ -20,51 +12,40 @@ type Student @aws_cognito_user_pools {
 }
 
 type Query @aws_cognito_user_pools {
-	getStudent(input: GetStudentInput!): Student
-	getStudentWith(input: GetStudentInput!): Student
-	getStudents(input: GetStudentsInput!): StudentList
+	get<% pascalCaseName %>(input: Get<% pascalCaseName %>Input!): <% pascalCaseName %>
+	get<% pascalCaseName %>With(input: Get<% pascalCaseName %>Input!): <% pascalCaseName %>
+	get<% pascalCaseName %>s(input: Get<% pascalCaseName %>sInput!): <% pascalCaseName %>List
 }
 
 
 type Mutation @aws_cognito_user_pools {
-	createStudent(input: CreateStudentInput!): Student
-	updateStudent(input: UpdateStudentInput!): Student
-	deleteStudent(input: DeleteStudentInput!): Student
+	create<% pascalCaseName %>(input: Create<% pascalCaseName %>Input!): <% pascalCaseName %>
+	update<% pascalCaseName %>(input: Update<% pascalCaseName %>Input!): <% pascalCaseName %>
+	delete<% pascalCaseName %>(input: Delete<% pascalCaseName %>Input!): <% pascalCaseName %>
 }
 
-input GetStudentInput {
-	id: String!
+input Get<% pascalCaseName %>Input {
+	<% dataPatternFieldsGraphQLGet %>
 }
 
-input CreateStudentInput {
-	firstName: String!
-	lastName: String!
-	email: String!
-	phoneNumber: String!
+input Create<% pascalCaseName %>Input {
+	<% dataPatternFieldsGraphQLCreate %>
 }
 
-input UpdateStudentInput {
-	id: String!
-	firstName: String!
-	lastName: String!
-	email: String
-	phoneNumber: String
-	noReview: Boolean
-	addresses: [CreateAddressInput]
-	cognitoUser: String
-	partnerId: String
+input Update<% pascalCaseName %>Input {
+	<% dataPatternFieldsGraphQLUpdate %>
 }
 
-input DeleteStudentInput {
-	id: String!
+input Delete<% pascalCaseName %>Input {
+	<% dataPatternFieldsGraphQLDelete %>
 }
 
-input GetStudentsInput {
+input Get<% pascalCaseName %>sInput {
 	limit: Int
 	nextToken: String
 }
 
-type StudentList  @aws_cognito_user_pools @aws_api_key {
-	data: [Student]
+type <% pascalCaseName %>List  @aws_cognito_user_pools @aws_api_key {
+	data: [<% pascalCaseName %>]
 	nextToken: String
 }`
