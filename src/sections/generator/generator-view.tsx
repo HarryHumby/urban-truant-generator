@@ -20,12 +20,15 @@ import uiBaseIndexTemplate from 'src/codetemplates/ui/base/index';
 import uiBaseTypesTemplate from 'src/codetemplates/ui/base/types';
 import uiClientTemplate from 'src/codetemplates/ui/client';
 import uiIndexTemplate from 'src/codetemplates/ui/index';
-import _, { template } from 'lodash';
+import _ from 'lodash';
 import Prism from 'prismjs';
 import "prismjs/themes/prism-tomorrow.css";
 import uuidv4 from 'src/utils/uuidv4';
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 export default function GeneratorVIew() {
+  // TODO: HH: Add a save and a load entities
   const [entities, setEntities] = useState([{
     name: "Instructor", hash: "I", dataPattern: { fields: [{ id: uuidv4(), key: "id", type: "string" }] }, tenantId: true, limit: "20"
   }, {
@@ -39,25 +42,25 @@ export default function GeneratorVIew() {
   // TODO: HH: Move this into a seperate file
   // Vtl is not supported atm, javascript colours look decent
   const activeTemplates = [
-    { name: "api/base/schema", value: apiBaseSchemaTemplate, language: "javascript" },
-    { name: "api/base/mappings", value: apiBaseMappingsTemplate, language: "javascript" },
-    { name: "api/base/lambda/dynamodb", value: apiBaseDynamodbTemplate, language: "javascript" },
-    { name: "api/base/lambda/types", value: apiBaseTypesTemplate, language: "javascript" },
-    { name: "api/base/vtl/create/req", value: apiBaseVtlCreateReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/create/res", value: apiBaseVtlResTemplate, language: "javascript" },
-    { name: "api/base/vtl/get/req", value: apiBaseVtlGetReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/get/res", value: apiBaseVtlResTemplate, language: "javascript" },
-    { name: "api/base/vtl/getAll/req", value: apiBaseVtlGetAllReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/getAll/res", value: apiBaseVtlGetAllResTemplate, language: "javascript" },
-    { name: "api/base/vtl/update/req", value: apiBaseVtlUpdateReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/update/res", value: apiBaseVtlResTemplate, language: "javascript" },
-    { name: "api/base/vtl/delete/req", value: apiBaseVtlDeleteReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/delete/res", value: apiBaseVtlResTemplate, language: "javascript" },
-    { name: "ui/services/base/graphql", value: uiBaseGraphQLTemplate, language: "javascript" },
-    { name: "ui/services/base/index", value: uiBaseIndexTemplate, language: "javascript" },
-    { name: "ui/services/base/types", value: uiBaseTypesTemplate, language: "javascript" },
-    { name: "ui/services/client", value: uiClientTemplate, language: "javascript" },
-    { name: "ui/services/index", value: uiIndexTemplate, language: "javascript" },
+    { name: "api/base/schema", type: "backend", path: "api/<% camelCaseName %>/base/schema.graphql", value: apiBaseSchemaTemplate, language: "javascript" },
+    { name: "api/base/mappings", type: "backend", path: "api/<% camelCaseName %>/base/mappings.yml", value: apiBaseMappingsTemplate, language: "javascript" },
+    { name: "api/base/lambda/dynamodb", type: "backend", path: "api/<% camelCaseName %>/base/lambda/dynamodb.ts", value: apiBaseDynamodbTemplate, language: "javascript" },
+    { name: "api/base/lambda/types", type: "backend", path: "api/<% camelCaseName %>/base/lambda/types.ts", value: apiBaseTypesTemplate, language: "javascript" },
+    { name: "api/base/vtl/create/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/create/req.vtl", value: apiBaseVtlCreateReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/create/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/create/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "api/base/vtl/get/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/get/req.vtl", value: apiBaseVtlGetReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/get/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/get/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "api/base/vtl/getAll/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/getAll/req.vtl", value: apiBaseVtlGetAllReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/getAll/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/getAll/res.vtl", value: apiBaseVtlGetAllResTemplate, language: "javascript" },
+    { name: "api/base/vtl/update/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/update/req.vtl", value: apiBaseVtlUpdateReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/update/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/update/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "api/base/vtl/delete/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/delete/req.vtl", value: apiBaseVtlDeleteReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/delete/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/delete/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "ui/services/base/graphql", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/graphql.ts", value: uiBaseGraphQLTemplate, language: "javascript" },
+    { name: "ui/services/base/index", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/index.ts", value: uiBaseIndexTemplate, language: "javascript" },
+    { name: "ui/services/base/types", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/types.ts", value: uiBaseTypesTemplate, language: "javascript" },
+    { name: "ui/services/client", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/client.ts", value: uiClientTemplate, language: "javascript" },
+    { name: "ui/services/index", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/index.ts", value: uiIndexTemplate, language: "javascript" },
   ];
 
   const updateTemplateData = () => {
@@ -107,7 +110,17 @@ export default function GeneratorVIew() {
   }, [compiledTemplates, currentTabIndex])
 
   const download = () => {
-    navigator.clipboard.writeText(compiledTemplates[compiledTemplates.length - 1]?.value);
+    const zip = new JSZip();
+    entities.forEach((entity) => {
+      const entityTemplateData = templateData[entity.name];
+      const entityCompiledTemplates = compiledTemplates[entity.name];
+      entityCompiledTemplates.forEach((compiledTemplate) => {
+        zip.file(`${compiledTemplate.type}/src/${compiledTemplate.path.replace("<% camelCaseName %>", entityTemplateData.camelCaseName)}`, compiledTemplate.value);
+      })
+    })
+    zip.generateAsync({ type: "blob" }).then((zip) => {
+      saveAs(zip, "generated.zip");
+    });
   }
 
   const generate = () => {
@@ -117,7 +130,7 @@ export default function GeneratorVIew() {
     }
     entities.forEach((entity: any) => {
       const entityCompiledTemplates = activeTemplates.map((activeTemplate) => {
-        const { name, value, language } = activeTemplate;
+        const { name, value, language, path, type } = activeTemplate;
         let entityCompiledTemplate = value;
         Object.entries(templateData[entity.name]).forEach((template) => {
           const [key, value] = template;
@@ -155,7 +168,7 @@ export default function GeneratorVIew() {
         }
         // remove the blocks of linebreaks that results when removing content from the template
         entityCompiledTemplate = entityCompiledTemplate.replace(/\n+/g, "\n");
-        return { name, value: entityCompiledTemplate, language };
+        return { name, value: entityCompiledTemplate, language, path, type };
       })
       newCompiledTemplates[entity.name] = entityCompiledTemplates;
     })
@@ -232,7 +245,7 @@ export default function GeneratorVIew() {
   return (<React.Fragment>
     <Box>
       <h1>Generator</h1>
-      <Button sx={{ position: "relative", top: "-65px", float: "right" }} color={"primary"} variant="contained" onClick={download}>Download</Button>
+      <Button sx={{ position: "relative", top: "-65px", float: "right" }} color={"primary"} variant="contained" onClick={download} disabled={_.isEmpty(compiledTemplates)}>Download</Button>
     </Box>
     <Tabs value={currentTabIndex} onChange={handleTabChange}>
       {entities.map((entity) => {
