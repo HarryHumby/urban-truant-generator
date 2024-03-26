@@ -3,17 +3,22 @@
 import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import React, { useState, useEffect } from 'react';
-import schemaTemplate from 'src/codetemplates/base/schema';
-import mappingsTemplate from 'src/codetemplates/base/mappings';
-import dynamodbTemplate from 'src/codetemplates/base/lambda/dynamodb';
-import typesTemplate from 'src/codetemplates/base/lambda/types';
-import vtlCreateReqTemplate from 'src/codetemplates/base/vtl/create/req';
-import vtlGetReqTemplate from 'src/codetemplates/base/vtl/get/req';
-import vtlGetAllReqTemplate from 'src/codetemplates/base/vtl/getAll/req';
-import vtlUpdateReqTemplate from 'src/codetemplates/base/vtl/update/req';
-import vtlDeleteReqTemplate from 'src/codetemplates/base/vtl/delete/req';
-import vtlResTemplate from 'src/codetemplates/base/vtl/get/req';
-import vtlGetAllResTemplate from 'src/codetemplates/base/vtl/getAll/res';
+import apiBaseSchemaTemplate from 'src/codetemplates/api/base/schema';
+import apiBaseMappingsTemplate from 'src/codetemplates/api/base/mappings';
+import apiBaseDynamodbTemplate from 'src/codetemplates/api/base/lambda/dynamodb';
+import apiBaseTypesTemplate from 'src/codetemplates/api/base/lambda/types';
+import apiBaseVtlCreateReqTemplate from 'src/codetemplates/api/base/vtl/create/req';
+import apiBaseVtlGetReqTemplate from 'src/codetemplates/api/base/vtl/get/req';
+import apiBaseVtlGetAllReqTemplate from 'src/codetemplates/api/base/vtl/getAll/req';
+import apiBaseVtlUpdateReqTemplate from 'src/codetemplates/api/base/vtl/update/req';
+import apiBaseVtlDeleteReqTemplate from 'src/codetemplates/api/base/vtl/delete/req';
+import apiBaseVtlResTemplate from 'src/codetemplates/api/base/vtl/get/req';
+import apiBaseVtlGetAllResTemplate from 'src/codetemplates/api/base/vtl/getAll/res';
+import uiBaseGraphQLTemplate from 'src/codetemplates/ui/base/graphql';
+import uiBaseIndexTemplate from 'src/codetemplates/ui/base/index';
+import uiBaseTypesTemplate from 'src/codetemplates/ui/base/types';
+import uiClientTemplate from 'src/codetemplates/ui/client';
+import uiIndexTemplate from 'src/codetemplates/ui/index';
 import _ from 'lodash';
 import Prism from 'prismjs';
 import "prismjs/themes/prism-tomorrow.css";
@@ -30,24 +35,27 @@ email: string;`, tenantId: true, limit: "20"
   const [templateData, setTemplateData] = useState({});
   const [compiledTemplates, setCompiledTemplates] = useState([]);
 
-  // TODO: HH: Only the lamdba templates are currently correct, teh vtls, and schema are not done yet
-
   // Vtl is not supported atm, javascript colours look decent
   const activeTemplates = [
-    { name: "base/schema", value: schemaTemplate, language: "javascript" },
-    { name: "base/mappings", value: mappingsTemplate, language: "javascript" },
-    { name: "base/lambda/dynamodb", value: dynamodbTemplate, language: "javascript" },
-    { name: "base/lambda/types", value: typesTemplate, language: "javascript" },
-    { name: "base/vtl/create/req", value: vtlCreateReqTemplate, language: "javascript" },
-    { name: "base/vtl/create/res", value: vtlResTemplate, language: "javascript" },
-    { name: "base/vtl/get/req", value: vtlGetReqTemplate, language: "javascript" },
-    { name: "base/vtl/get/res", value: vtlResTemplate, language: "javascript" },
-    { name: "base/vtl/getAll/req", value: vtlGetAllReqTemplate, language: "javascript" },
-    { name: "base/vtl/getAll/res", value: vtlGetAllResTemplate, language: "javascript" },
-    { name: "base/vtl/update/req", value: vtlUpdateReqTemplate, language: "javascript" },
-    { name: "base/vtl/update/res", value: vtlResTemplate, language: "javascript" },
-    { name: "base/vtl/delete/req", value: vtlDeleteReqTemplate, language: "javascript" },
-    { name: "base/vtl/delete/res", value: vtlResTemplate, language: "javascript" }
+    { name: "api/base/schema", value: apiBaseSchemaTemplate, language: "javascript" },
+    { name: "api/base/mappings", value: apiBaseMappingsTemplate, language: "javascript" },
+    { name: "api/base/lambda/dynamodb", value: apiBaseDynamodbTemplate, language: "javascript" },
+    { name: "api/base/lambda/types", value: apiBaseTypesTemplate, language: "javascript" },
+    { name: "api/base/vtl/create/req", value: apiBaseVtlCreateReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/create/res", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "api/base/vtl/get/req", value: apiBaseVtlGetReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/get/res", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "api/base/vtl/getAll/req", value: apiBaseVtlGetAllReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/getAll/res", value: apiBaseVtlGetAllResTemplate, language: "javascript" },
+    { name: "api/base/vtl/update/req", value: apiBaseVtlUpdateReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/update/res", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "api/base/vtl/delete/req", value: apiBaseVtlDeleteReqTemplate, language: "javascript" },
+    { name: "api/base/vtl/delete/res", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "ui/services/base/graphql", value: uiBaseGraphQLTemplate, language: "javascript" },
+    { name: "ui/services/base/index", value: uiBaseIndexTemplate, language: "javascript" },
+    { name: "ui/services/base/types", value: uiBaseTypesTemplate, language: "javascript" },
+    { name: "ui/services/client", value: uiClientTemplate, language: "javascript" },
+    { name: "ui/services/index", value: uiIndexTemplate, language: "javascript" },
   ];
 
   const onTextChange = (e: any) => {
@@ -71,11 +79,13 @@ email: string;`, tenantId: true, limit: "20"
     newTemplateData["tenantId"] = data.tenantId ? "${tenantId}" : "";
     newTemplateData["dataPatternFields"] = data.dataPatternFields;
     newTemplateData["dataPatternFieldsCreate"] = data.dataPatternFields.replace("id: string;\n", "");
+    newTemplateData["dataPatternFieldsUpdate"] = data.dataPatternFields.replaceAll(":", "?:").replaceAll("id?:", "id:");
     newTemplateData["dataPatternFieldsGraphQL"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean");
     newTemplateData["dataPatternFieldsGraphQLCreate"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replace("id: String", "id: String!");
     newTemplateData["dataPatternFieldsGraphQLUpdate"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replace("id: String", "id: String!");
     newTemplateData["dataPatternFieldsGraphQLGet"] = "id: String!";
     newTemplateData["dataPatternFieldsGraphQLDelete"] = "id: String!";
+    newTemplateData["dataPatternFieldsUIGraphQL"] = data.dataPatternFields.replaceAll(": string;", "").replaceAll(": boolean;", "Boolean");
     // TODO: Implement limit
     newTemplateData["limit"] = data.limit;
     setTemplateData(newTemplateData);
@@ -183,7 +193,6 @@ email: string;`, tenantId: true, limit: "20"
             {name}
           </AccordionSummary>
           <AccordionDetails
-            expandIcon={<ExpandMoreIcon />}
             id={name}
           >
             <pre><code className={`language-${language}`}>{value}</code></pre>
