@@ -30,9 +30,23 @@ import { saveAs } from "file-saver";
 export default function GeneratorVIew() {
   // TODO: HH: Add a save and a load entities
   const [entities, setEntities] = useState([{
-    name: "Instructor", hash: "I", dataPattern: { fields: [{ id: uuidv4(), key: "id", type: "string" }] }, tenantId: true, limit: "20"
+    name: "Instructor",
+    hash: "I",
+    dataPattern: {
+      fields: [{ id: uuidv4(), key: "id", type: "string" }],
+      globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: "$T_Hash_$tenantId_$prefix_", sk: "$prefix_$id" }]
+    },
+    tenantId: true,
+    limit: "20"
   }, {
-    name: "Student", hash: "S", dataPattern: { fields: [{ id: uuidv4(), key: "id", type: "string" }] }, tenantId: true, limit: "20"
+    name: "Student",
+    hash: "S",
+    dataPattern: {
+      fields: [{ id: uuidv4(), key: "id", type: "string" }],
+      globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: "$T_Hash_$tenantId_$prefix_", sk: "$prefix_$id" }]
+    },
+    tenantId: true,
+    limit: "20"
   }]);
 
   const [templateData, setTemplateData] = useState({});
@@ -238,10 +252,47 @@ export default function GeneratorVIew() {
     setEntities(entitiesUpdate);
   }
 
+  const onSelectDataPatternGlobalSecondaryIndexTextChange = (index: number, globalSecondaryIndexId: string, e: any, updateField) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((globalSecondaryIndex) => {
+      // Find the global secondary index thats being updated
+      if (globalSecondaryIndex.id === globalSecondaryIndexId) {
+        globalSecondaryIndex[updateField] = e.target.value;
+      }
+      return globalSecondaryIndex;
+    })
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
+  }
+
+  const onSelectDataPatternGlobalSecondaryIndexRemove = (index: number, globalSecondaryIndexId: string, e: any) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.filter((globalSecondaryIndex) => {
+      // Find the global secondary index thats being removed
+      if (globalSecondaryIndex.id === globalSecondaryIndexId) {
+        return;
+      }
+      return globalSecondaryIndex;
+    })
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
+  }
+
+  const onSelectDataPatternGlobalSecondaryIndexAdd = (index: number, e: any) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern.globalSecondaryIndexes.push({ id: uuidv4(), key: `GSI${newDataPattern.globalSecondaryIndexes.length + 1}`, pk: "", sk: "" });
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
+  }
+
   const handleTabChange = (e, tabIndex) => {
     setCurrentTabIndex(tabIndex);
   }
 
+  // TODO: HH: Move some of the items rendered below into their own components and pull them in as this file is rather bloated now
   return (<React.Fragment>
     <Box>
       <h1>Generator</h1>
@@ -254,7 +305,7 @@ export default function GeneratorVIew() {
     </Tabs>
     <Box>
       {/* Removed for now as the templateData box is a little glitchy between rerenders */}
-      {/* {!_.isEmpty(templateData) && templateData[entities[currentTabIndex]?.name] && <Accordion key={"templateData"}>
+      {/* {templateData[entities[currentTabIndex]?.name] && <Accordion>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
           id={"templateData"}
@@ -273,8 +324,8 @@ export default function GeneratorVIew() {
         </AccordionDetails>
       </Accordion>} */}
 
-      <h2>Configuration</h2>
       <Box>
+        <h2>Configuration</h2>
         <h3>Basic</h3>
         <TextField
           label={"Name"}
@@ -307,7 +358,7 @@ export default function GeneratorVIew() {
             onCheckboxChange(currentTabIndex, e);
           }} >
         </Checkbox>
-        <h3>Data Pattern</h3>
+        <h3>Fields</h3>
         {entities[currentTabIndex].dataPattern?.fields.map((field) => {
           return <Box key={field.id}>
             <TextField name={"key"} value={field.key} disabled={field.id === entities[currentTabIndex].dataPattern.fields[0].id} onChange={(e) => {
@@ -328,10 +379,30 @@ export default function GeneratorVIew() {
         <Button variant="contained" color='primary' onClick={(e) => {
           onSelectDataPatternFieldAdd(currentTabIndex, e);
         }}>Add</Button>
+        <h3>Global Secondary Indexes</h3>
+        {entities[currentTabIndex].dataPattern?.globalSecondaryIndexes.map((globalSecondaryIndex, index) => {
+          return <Box key={globalSecondaryIndex.id}>
+            <TextField name={"key"} value={globalSecondaryIndex.key} disabled onChange={(e) => {
+              onSelectDataPatternGlobalSecondaryIndexTextChange(currentTabIndex, globalSecondaryIndex.id, e, "key");
+            }} />
+            <TextField name={"pk"} value={globalSecondaryIndex.pk} onChange={(e) => {
+              onSelectDataPatternGlobalSecondaryIndexTextChange(currentTabIndex, globalSecondaryIndex.id, e, "pk");
+            }} />
+            <TextField name={"sk"} value={globalSecondaryIndex.sk} onChange={(e) => {
+              onSelectDataPatternGlobalSecondaryIndexTextChange(currentTabIndex, globalSecondaryIndex.id, e, "sk");
+            }} />
+            {index === entities[currentTabIndex].dataPattern?.globalSecondaryIndexes.length - 1 && index !== 0 && <Button variant="contained" color='error' onClick={(e) => {
+              onSelectDataPatternGlobalSecondaryIndexRemove(currentTabIndex, globalSecondaryIndex.id, e);
+            }}>Remove</Button>}
+          </Box>
+        })}
+        <Button variant="contained" color='primary' onClick={(e) => {
+          onSelectDataPatternGlobalSecondaryIndexAdd(currentTabIndex, e);
+        }}>Add</Button>
       </Box>
-      <h2>Preview</h2>
       <Box>
-        {compiledTemplates[entities[currentTabIndex]?.name] && compiledTemplates[entities[currentTabIndex]?.name].length && compiledTemplates[entities[currentTabIndex].name].map((compiledTemplate) => {
+        <h2>Preview</h2>
+        {compiledTemplates[entities[currentTabIndex]?.name] && compiledTemplates[entities[currentTabIndex].name].map((compiledTemplate) => {
           const { name, value, language } = compiledTemplate;
           return <Accordion key={name}>
             <AccordionSummary
