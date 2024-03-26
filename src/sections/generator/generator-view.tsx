@@ -1,6 +1,6 @@
 'use client';
 
-import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails, MenuItem } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import React, { useState, useEffect } from 'react';
 import apiBaseSchemaTemplate from 'src/codetemplates/api/base/schema';
@@ -22,14 +22,13 @@ import uiIndexTemplate from 'src/codetemplates/ui/index';
 import _ from 'lodash';
 import Prism from 'prismjs';
 import "prismjs/themes/prism-tomorrow.css";
+import { Key } from '@mui/icons-material';
+import uuidv4 from 'src/utils/uuidv4';
 
 export default function GeneratorVIew() {
   // TODO: HH: Turn dataPattern into a nice ui instead of just a textarea
   const [data, setData] = useState({
-    name: "Instructor", hash: "#I#", dataPatternFields: `id: string;
-firstName: string;
-lastName: string;
-email: string;`, tenantId: true, limit: "20"
+    name: "Instructor", hash: "#I#", dataPattern: { fields: [{ id: uuidv4(), key: "id", type: "string" }, { id: uuidv4(), key: "firstName", type: "string" }, { id: uuidv4(), key: "lastName", type: "string" }, { id: uuidv4(), key: "email", type: "string" }] }, tenantId: true, limit: "20"
   });
 
   const [templateData, setTemplateData] = useState({});
@@ -71,21 +70,27 @@ email: string;`, tenantId: true, limit: "20"
   const updateTemplateData = () => {
 
     const newTemplateData: any = {};
+    let dataPatternFields = ``;
+
+    data.dataPattern.fields.forEach((field) => {
+      dataPatternFields += `${field.key}: ${field.type};\n`;
+    })
+
     newTemplateData["camelCaseName"] = _.camelCase(data.name);
     newTemplateData["pascalCaseName"] = _.capitalize(_.camelCase(data.name));
     newTemplateData["upperCaseName"] = data.name.toUpperCase();
     newTemplateData["hash"] = data.hash;
     newTemplateData["tenantHash"] = data.tenantId ? "#T#" : "";
     newTemplateData["tenantId"] = data.tenantId ? "${tenantId}" : "";
-    newTemplateData["dataPatternFields"] = data.dataPatternFields;
-    newTemplateData["dataPatternFieldsCreate"] = data.dataPatternFields.replace("id: string;\n", "");
-    newTemplateData["dataPatternFieldsUpdate"] = data.dataPatternFields.replaceAll(":", "?:").replaceAll("id?:", "id:");
-    newTemplateData["dataPatternFieldsGraphQL"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean");
-    newTemplateData["dataPatternFieldsGraphQLCreate"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replace("id: String", "id: String!");
-    newTemplateData["dataPatternFieldsGraphQLUpdate"] = data.dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replace("id: String", "id: String!");
+    newTemplateData["dataPatternFields"] = dataPatternFields;
+    newTemplateData["dataPatternFieldsCreate"] = dataPatternFields.replace("id: string;\n", "");
+    newTemplateData["dataPatternFieldsUpdate"] = dataPatternFields.replaceAll(":", "?:").replaceAll("id?:", "id:");
+    newTemplateData["dataPatternFieldsGraphQL"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number");
+    newTemplateData["dataPatternFieldsGraphQLCreate"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number").replace("id: String", "id: String!");
+    newTemplateData["dataPatternFieldsGraphQLUpdate"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number").replace("id: String", "id: String!");
     newTemplateData["dataPatternFieldsGraphQLGet"] = "id: String!";
     newTemplateData["dataPatternFieldsGraphQLDelete"] = "id: String!";
-    newTemplateData["dataPatternFieldsUIGraphQL"] = data.dataPatternFields.replaceAll(": string;", "").replaceAll(": boolean;", "Boolean");
+    newTemplateData["dataPatternFieldsUIGraphQL"] = dataPatternFields.replaceAll(": string;", "").replaceAll(": boolean;", "Boolean");
     // TODO: Implement limit
     newTemplateData["limit"] = data.limit;
     setTemplateData(newTemplateData);
@@ -152,6 +157,48 @@ email: string;`, tenantId: true, limit: "20"
     setCompiledTemplates(compiledTemplates);
   }
 
+  const onSelectDataPatternFieldKeyChange = (fieldId: string, e: any) => {
+    const dataPattern = { ...data.dataPattern };
+    dataPattern.fields = dataPattern.fields.map((field) => {
+      // Find the field thats being updated
+      if (field.id === fieldId) {
+        field.key = e.target.value;
+      }
+      return field;
+    })
+    setData({ ...data, ...{ dataPattern } });
+  }
+
+  const onSelectDataPatternFieldTypeChange = (fieldId: string, e: any) => {
+    const dataPattern = { ...data.dataPattern };
+    dataPattern.fields = dataPattern.fields.map((field) => {
+      // Find the field thats being updated
+      if (field.id === fieldId) {
+        field.type = e.target.value;
+      }
+      return field;
+    })
+    setData({ ...data, ...{ dataPattern } });
+  }
+
+  const onSelectDataPatternFieldRemove = (fieldId: string, e: any) => {
+    const dataPattern = { ...data.dataPattern };
+    dataPattern.fields = dataPattern.fields.filter((field) => {
+      // Find the field thats being removed
+      if (field.id === fieldId) {
+        return;
+      }
+      return field;
+    })
+    setData({ ...data, ...{ dataPattern } });
+  }
+
+  const onSelectDataPatternFieldAdd = (e: any) => {
+    const dataPattern = { ...data.dataPattern };
+    dataPattern.fields.push({ id: uuidv4(), key: uuidv4(), type: "string" });
+    setData({ ...data, ...{ dataPattern } });
+  }
+
   return (<React.Fragment>
     <h1>Generator</h1>
     <Accordion key={"templateData"}>
@@ -175,11 +222,32 @@ email: string;`, tenantId: true, limit: "20"
 
     <h2>Configuration</h2>
     <Box>
+      <h3>Basic</h3>
       <TextField label={"Name"} name={"name"} value={data.name} onChange={onTextChange}></TextField>
       <TextField label={"Hash"} name={"hash"} value={data.hash} onChange={onTextChange}></TextField>
       TenantId?: <Checkbox name={"tenantId"} checked={data.tenantId} onChange={onCheckboxChange} ></Checkbox>
       <TextField label={"Limit"} name={"limit"} value={data.limit} onChange={onTextChange}></TextField>
-      <textarea value={data.dataPatternFields} name={"dataPatternFields"} onChange={onTextChange}></textarea >
+      <h3>Data Pattern</h3>
+      {data?.dataPattern?.fields.map((field) => {
+        return <Box key={field.id}>
+          <TextField name={"key"} value={field.key} disabled={field.id === data.dataPattern.fields[0].id} onChange={(e) => {
+            onSelectDataPatternFieldKeyChange(field.id, e);
+          }} />
+          <TextField name={"type"} value={field.type} disabled={field.id === data.dataPattern.fields[0].id} onChange={(e) => {
+            onSelectDataPatternFieldTypeChange(field.id, e);
+          }} select>
+            <MenuItem value="string" >string</MenuItem>
+            <MenuItem value="boolean">boolean</MenuItem>
+            <MenuItem value="number">number</MenuItem>
+          </TextField>
+          {field.id !== data.dataPattern.fields[0].id && <Button variant="contained" color='error' onClick={(e) => {
+            onSelectDataPatternFieldRemove(field.id, e);
+          }}>Remove</Button>}
+        </Box>
+      })}
+      <Button variant="contained" color='primary' onClick={(e) => {
+        onSelectDataPatternFieldAdd(e);
+      }}>Add</Button>
     </Box>
     <h2>Preview</h2>
     <Box>
