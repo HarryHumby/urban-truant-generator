@@ -26,6 +26,7 @@ import "prismjs/themes/prism-tomorrow.css";
 import uuidv4 from 'src/utils/uuidv4';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+
 export default function GeneratorVIew() {
   // TODO: HH: Add a save and a load entities
   const [entities, setEntities] = useState([{
@@ -33,16 +34,9 @@ export default function GeneratorVIew() {
     hash: "I",
     dataPattern: {
       fields: [{ id: uuidv4(), key: "id", type: "string" }],
+      pk: ["#T#", "$tenantId", "#I#"],
+      sk: ["#I#", "$id"],
       globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: ["#T#", "$tenantId", "$id"], sk: ["#I#", "$id"] }]
-    },
-    tenantId: true,
-    limit: "20"
-  }, {
-    name: "Student",
-    hash: "S",
-    dataPattern: {
-      fields: [{ id: uuidv4(), key: "id", type: "string" }],
-      globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: ["$id"], sk: ["$id"] }]
     },
     tenantId: true,
     limit: "20"
@@ -93,8 +87,9 @@ export default function GeneratorVIew() {
       newEntityTemplateData["upperCaseName"] = entity.name.toUpperCase();
       newEntityTemplateData["hash"] = `#${entity.hash}#`;
       newEntityTemplateData["tenantHash"] = entity.tenantId ? "#T#" : "";
-      newEntityTemplateData["tenantId"] = entity.tenantId ? "${tenantId}" : "";
+      newEntityTemplateData["tenantId"] = entity.tenantId ? "$tenantId" : "";
       newEntityTemplateData["dataPatternFields"] = dataPatternFields;
+      newEntityTemplateData["dataPatternFieldsKeysArray"] = entity.dataPattern.fields.map((x) => { return x.key });
       newEntityTemplateData["dataPatternFieldsCreate"] = dataPatternFields.replace("id: string;\n", "");
       newEntityTemplateData["dataPatternFieldsUpdate"] = dataPatternFields.replaceAll(":", "?:").replaceAll("id?:", "id:");
       newEntityTemplateData["dataPatternFieldsGraphQL"] = dataPatternFields.replaceAll("string;", "String").replaceAll("boolean;", "Boolean").replaceAll("number;", "Number");
@@ -105,6 +100,13 @@ export default function GeneratorVIew() {
       newEntityTemplateData["dataPatternFieldsUIGraphQL"] = dataPatternFields.replaceAll(": string;", "").replaceAll(": boolean;", "Boolean");
       // TODO: HH: Implement limit
       newEntityTemplateData["limit"] = entity.limit;
+      newEntityTemplateData["sk"] = entity.dataPattern.sk.join("");
+      newEntityTemplateData["pk"] = entity.dataPattern.pk.join("");
+
+      entity.dataPattern.globalSecondaryIndexes.forEach((gsi) => {
+        newEntityTemplateData[`${gsi.key}PK`] = gsi["pk"].join("");
+        newEntityTemplateData[`${gsi.key}SK`] = gsi["sk"].join("");
+      })
 
       newTemplateData[entity.name] = newEntityTemplateData;
     })
@@ -159,33 +161,41 @@ export default function GeneratorVIew() {
           const [key, value] = template;
           entityCompiledTemplate = entityCompiledTemplate.replaceAll(`<% ${key} %>`, value);
         })
-        const templateStatements = entityCompiledTemplate.match(/<% if .* %>/g);
-        if (templateStatements && templateStatements.length) {
-          templateStatements.forEach((templateStatement) => {
+        const templateIfStatements = entityCompiledTemplate.match(/<% ((if)|(forEach)) .* %>/g);
+        if (templateIfStatements && templateIfStatements.length) {
+          templateIfStatements.forEach((templateStatement) => {
             const splitTemplateStatement = templateStatement.split(" ");
-            // HH: remove <%,if,%>  
+            // HH: remove <%,statement,%>  
             splitTemplateStatement.shift();
             const statement = splitTemplateStatement.shift();
             splitTemplateStatement.pop();
             // HH: get the field and the string to use if truthy
             const templateDataField = splitTemplateStatement.shift();
             const templateDataInsert = splitTemplateStatement.join(" ");
-            if (templateDataField?.charAt(0) === "!") {
-              if (templateData[templateDataField.slice(1)]) {
-                // HH: if field is truthy remove the string
-                entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, "");
+            if (statement === "if") {
+              if (templateDataField?.charAt(0) === "!") {
+                if (templateData[entity.name][templateDataField.slice(1)]) {
+                  // HH: if field is truthy remove the string
+                  entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, "");
+                } else {
+                  // HH: if field is falsy keep the string to the right
+                  entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, templateDataInsert);
+                }
               } else {
-                // HH: if field is falsy keep the string to the right
-                entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, templateDataInsert);
+                if (templateData[entity.name][templateDataField]) {
+                  // HH: if field is truthy keep the string to the right
+                  entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, templateDataInsert);
+                } else {
+                  // HH: if field is falsy remove the string
+                  entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, "");
+                }
               }
-            } else {
-              if (templateData[templateDataField]) {
-                // HH: if field is truthy keep the string to the right
-                entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, templateDataInsert);
-              } else {
-                // HH: if field is falsy remove the string
-                entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, "");
-              }
+            } else if (statement === "forEach") {
+              let fullTemplateDataInsert = ``;
+              templateData[entity.name][templateDataField].forEach((x) => {
+                fullTemplateDataInsert += `${templateDataInsert.replaceAll("<x>", x)}\n`;
+              })
+              entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, fullTemplateDataInsert);
             }
           })
         }
@@ -306,6 +316,14 @@ export default function GeneratorVIew() {
   const onSelectDataPatternFieldAdd = (index: number, e: any) => {
     let newDataPattern = { ...entities }[index].dataPattern;
     newDataPattern.fields.push({ id: uuidv4(), key: uuidv4(), type: "string" });
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
+  }
+
+  const onSelectDataPatternPrimaryAndSecondaryKeySelectChange = (index: number, e: any, updateField: string) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern[updateField] = e.target.value;
     let entitiesUpdate = Object.values({ ...entities });
     entitiesUpdate[index].dataPattern = newDataPattern;
     setEntities(entitiesUpdate);
@@ -468,13 +486,32 @@ export default function GeneratorVIew() {
         <Button variant="contained" color='primary' onClick={(e) => {
           onSelectDataPatternFieldAdd(currentTabIndex, e);
         }}>Add</Button>
+        <h3>Primary & Secondary Key</h3>
+        {/* TODO: HH: For some reason label isn't working on the select field */}
+        PK:
+        <Select name={"pk"} multiple value={entities[currentTabIndex].dataPattern?.pk} onChange={(e) => {
+          onSelectDataPatternPrimaryAndSecondaryKeySelectChange(currentTabIndex, e, "pk");
+        }} renderValue={(variable) => {
+          return variable.join("");
+        }} >
+          {globalSecondaryIndexOptions}
+        </Select>
+        {/* TODO: HH: For some reason label isn't working on the select field */}
+        SK:
+        <Select name={"sk"} multiple value={entities[currentTabIndex].dataPattern?.sk} onChange={(e) => {
+          onSelectDataPatternPrimaryAndSecondaryKeySelectChange(currentTabIndex, e, "sk");
+        }} renderValue={(variable) => {
+          return variable.join("");
+        }} >
+          {globalSecondaryIndexOptions}
+        </Select>
         <h3>Global Secondary Indexes</h3>
         {entities[currentTabIndex].dataPattern?.globalSecondaryIndexes.map((globalSecondaryIndex, index) => {
           return <Box key={globalSecondaryIndex.id}>
             <TextField name={"key"} label={"Key"} value={globalSecondaryIndex.key} disabled onChange={(e) => {
               onSelectDataPatternGlobalSecondaryIndexTextChange(currentTabIndex, globalSecondaryIndex.id, e, "key");
             }} />
-            {/* TODO: HH:For some reason label isn't working on the select field */}
+            {/* TODO: HH: For some reason label isn't working on the select field */}
             PK:
             <Select name={"pk"} multiple value={globalSecondaryIndex.pk} onChange={(e) => {
               onSelectDataPatternGlobalSecondaryIndexSelectChange(currentTabIndex, globalSecondaryIndex.id, e, "pk");
@@ -483,7 +520,7 @@ export default function GeneratorVIew() {
             }} >
               {globalSecondaryIndexOptions}
             </Select>
-            {/* TODO: HH:For some reason label isn't working on the select field */}
+            {/* TODO: HH: For some reason label isn't working on the select field */}
             SK:
             <Select name={"sk"} multiple value={globalSecondaryIndex.sk} onChange={(e) => {
               onSelectDataPatternGlobalSecondaryIndexSelectChange(currentTabIndex, globalSecondaryIndex.id, e, "sk");

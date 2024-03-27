@@ -1,25 +1,20 @@
 export default `#set( $obj = $ctx.args.input )
-<% if tenantId #set( $tenantId_ = $util.defaultIfNullOrEmpty($context.identity.claims.get("custom:tenantId"), $ctx.args.input.tenantId)) %>
+<% if tenantId #set( $tenantId = $util.defaultIfNullOrEmpty($context.identity.claims.get("custom:tenantId"), $ctx.args.input.tenantId)) %>
 <% if tenantId #if( $util.isNullOrEmpty($tenantId_) ) %>
 <% if tenantId 	$util.error("Tennant is required") %>
 <% if tenantId #end %>
 <% if tenantId #set( $obj.tenantId = $tenantId_ ) %>
 
-#set( $et = "<% upperCaseName %>")
-#set( $prefix_ = "<% hash %>")
-#set( $user = $util.defaultIfNullOrEmpty($context.identity.username, "API"))
-#set( $today = $util.time.nowISO8601() )
-#set( $id_ = "$util.autoUlid()")
-#set( $obj.id = $id_ )
-#set( $obj.et = $et )
-#set( $obj.co = $today )
-#set( $obj.cb = $user )
+#set( $obj.id = "$util.autoUlid()" )
+#set( $obj.et = "<% upperCaseName %>" )
+#set( $obj.co = $util.time.nowISO8601() )
+#set( $obj.cb = $util.defaultIfNullOrEmpty($context.identity.username, "API") )
 #set( $obj = $util.dynamodb.toMapValues($obj) )
-<% if tenantId #set( $tenantId_HASH = "#T#") %>
 
-<% if tenantId #set( $pk = "$tenantId_HASH$tenantId_$prefix_") %>
-<% if !tenantId #set( $pk = "$prefix_") %>
-#set( $sk = "$prefix_$id_")
+<% forEach dataPatternFieldsKeysArray #set( $<x> = $obj.<x> ) %>
+
+#set( $pk = "<% pk %>")
+#set( $sk = "<% sk %>")
 
 {
 	"version" : "2017-02-28",
