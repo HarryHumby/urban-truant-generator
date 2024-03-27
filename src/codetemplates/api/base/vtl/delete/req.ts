@@ -6,9 +6,9 @@ export default `#set( $id_ = $ctx.args.input.id)
 <% if tenantId #set( $obj.tenantId = $tenantId_ ) %>
 
 #set( $prefix_ = "<% hash %>")
-<% if tenantId #set( $T_HASH_ = "#T#")
+<% if tenantId #set( $tenantId_HASH = "#T#")
 
-<% if tenantId #set( $pk = "$T_HASH_$tenantId_$prefix_") %>
+<% if tenantId #set( $pk = "$tenantId_HASH$tenantId_$prefix_") %>
 <% if !tenantId #set( $pk = "$prefix_") %>
 #set( $sk = "$prefix_$id_")
 

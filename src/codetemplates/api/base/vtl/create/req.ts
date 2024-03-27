@@ -15,9 +15,9 @@ export default `#set( $obj = $ctx.args.input )
 #set( $obj.co = $today )
 #set( $obj.cb = $user )
 #set( $obj = $util.dynamodb.toMapValues($obj) )
-<% if tenantId #set( $T_HASH_ = "#T#") %>
+<% if tenantId #set( $tenantId_HASH = "#T#") %>
 
-<% if tenantId #set( $pk = "$T_HASH_$tenantId_$prefix_") %>
+<% if tenantId #set( $pk = "$tenantId_HASH$tenantId_$prefix_") %>
 <% if !tenantId #set( $pk = "$prefix_") %>
 #set( $sk = "$prefix_$id_")
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails, MenuItem, Tabs, Tab } from '@mui/material';
+import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails, MenuItem, Tabs, Tab, Select, InputLabel } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import React, { useState, useEffect } from 'react';
 // TODO: HH: Move these into an index and import all from one file
@@ -26,7 +26,8 @@ import "prismjs/themes/prism-tomorrow.css";
 import uuidv4 from 'src/utils/uuidv4';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-
+// $TenantId_HASH_$tenantId_$prefix_
+// $prefix_$id
 export default function GeneratorVIew() {
   // TODO: HH: Add a save and a load entities
   const [entities, setEntities] = useState([{
@@ -34,7 +35,7 @@ export default function GeneratorVIew() {
     hash: "I",
     dataPattern: {
       fields: [{ id: uuidv4(), key: "id", type: "string" }],
-      globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: "$T_Hash_$tenantId_$prefix_", sk: "$prefix_$id" }]
+      globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: ["#T#", "$tenantId", "$id"], sk: ["#I#", "$id"] }]
     },
     tenantId: true,
     limit: "20"
@@ -43,7 +44,7 @@ export default function GeneratorVIew() {
     hash: "S",
     dataPattern: {
       fields: [{ id: uuidv4(), key: "id", type: "string" }],
-      globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: "$T_Hash_$tenantId_$prefix_", sk: "$prefix_$id" }]
+      globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: ["$id"], sk: ["$id"] }]
     },
     tenantId: true,
     limit: "20"
@@ -56,25 +57,25 @@ export default function GeneratorVIew() {
   // TODO: HH: Move this into a seperate file
   // Vtl is not supported atm, javascript colours look decent
   const activeTemplates = [
-    { name: "api/base/schema", type: "backend", path: "api/<% camelCaseName %>/base/schema.graphql", value: apiBaseSchemaTemplate, language: "javascript" },
-    { name: "api/base/mappings", type: "backend", path: "api/<% camelCaseName %>/base/mappings.yml", value: apiBaseMappingsTemplate, language: "javascript" },
-    { name: "api/base/lambda/dynamodb", type: "backend", path: "api/<% camelCaseName %>/base/lambda/dynamodb.ts", value: apiBaseDynamodbTemplate, language: "javascript" },
-    { name: "api/base/lambda/types", type: "backend", path: "api/<% camelCaseName %>/base/lambda/types.ts", value: apiBaseTypesTemplate, language: "javascript" },
-    { name: "api/base/vtl/create/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/create/req.vtl", value: apiBaseVtlCreateReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/create/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/create/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
-    { name: "api/base/vtl/get/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/get/req.vtl", value: apiBaseVtlGetReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/get/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/get/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
-    { name: "api/base/vtl/getAll/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/getAll/req.vtl", value: apiBaseVtlGetAllReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/getAll/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/getAll/res.vtl", value: apiBaseVtlGetAllResTemplate, language: "javascript" },
-    { name: "api/base/vtl/update/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/update/req.vtl", value: apiBaseVtlUpdateReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/update/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/update/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
-    { name: "api/base/vtl/delete/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/delete/req.vtl", value: apiBaseVtlDeleteReqTemplate, language: "javascript" },
-    { name: "api/base/vtl/delete/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/delete/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
-    { name: "ui/services/base/graphql", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/graphql.ts", value: uiBaseGraphQLTemplate, language: "javascript" },
-    { name: "ui/services/base/index", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/index.ts", value: uiBaseIndexTemplate, language: "javascript" },
-    { name: "ui/services/base/types", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/types.ts", value: uiBaseTypesTemplate, language: "javascript" },
-    { name: "ui/services/client", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/client.ts", value: uiClientTemplate, language: "javascript" },
-    { name: "ui/services/index", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/index.ts", value: uiIndexTemplate, language: "javascript" },
+    { name: "schema", type: "backend", path: "api/<% camelCaseName %>/base/schema.graphql", value: apiBaseSchemaTemplate, language: "javascript" },
+    { name: "mappings", type: "backend", path: "api/<% camelCaseName %>/base/mappings.yml", value: apiBaseMappingsTemplate, language: "javascript" },
+    { name: "lambda/dynamodb", type: "backend", path: "api/<% camelCaseName %>/base/lambda/dynamodb.ts", value: apiBaseDynamodbTemplate, language: "javascript" },
+    { name: "lambda/types", type: "backend", path: "api/<% camelCaseName %>/base/lambda/types.ts", value: apiBaseTypesTemplate, language: "javascript" },
+    { name: "vtl/create/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/create/req.vtl", value: apiBaseVtlCreateReqTemplate, language: "javascript" },
+    { name: "vtl/create/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/create/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "vtl/get/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/get/req.vtl", value: apiBaseVtlGetReqTemplate, language: "javascript" },
+    { name: "vtl/get/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/get/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "vtl/getAll/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/getAll/req.vtl", value: apiBaseVtlGetAllReqTemplate, language: "javascript" },
+    { name: "vtl/getAll/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/getAll/res.vtl", value: apiBaseVtlGetAllResTemplate, language: "javascript" },
+    { name: "vtl/update/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/update/req.vtl", value: apiBaseVtlUpdateReqTemplate, language: "javascript" },
+    { name: "vtl/update/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/update/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "vtl/delete/req", type: "backend", path: "api/<% camelCaseName %>/base/vtl/delete/req.vtl", value: apiBaseVtlDeleteReqTemplate, language: "javascript" },
+    { name: "vtl/delete/res", type: "backend", path: "api/<% camelCaseName %>/base/vtl/delete/res.vtl", value: apiBaseVtlResTemplate, language: "javascript" },
+    { name: "services/base/graphql", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/graphql.ts", value: uiBaseGraphQLTemplate, language: "javascript" },
+    { name: "services/base/index", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/index.ts", value: uiBaseIndexTemplate, language: "javascript" },
+    { name: "services/base/types", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/base/types.ts", value: uiBaseTypesTemplate, language: "javascript" },
+    { name: "services/client", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/client.ts", value: uiClientTemplate, language: "javascript" },
+    { name: "services/index", type: "frontend", path: "services/<% camelCaseName %>/<% camelCaseName %>/index.ts", value: uiIndexTemplate, language: "javascript" },
   ];
 
   const updateTemplateData = () => {
@@ -86,6 +87,8 @@ export default function GeneratorVIew() {
       entity.dataPattern.fields.forEach((field) => {
         dataPatternFields += `${field.key}: ${field.type};\n`;
       })
+
+      // TODO: HH: Move the different types like string and boolean into its own file
 
       newEntityTemplateData["camelCaseName"] = _.camelCase(entity.name);
       newEntityTemplateData["pascalCaseName"] = _.capitalize(_.camelCase(entity.name));
@@ -135,6 +138,14 @@ export default function GeneratorVIew() {
     zip.generateAsync({ type: "blob" }).then((zip) => {
       saveAs(zip, "generated.zip");
     });
+  }
+
+  const save = () => {
+    //  TODO: HH: send entities to s3.
+  }
+
+  const load = () => {
+    //  TODO: HH: get entities to s3 and display them.
   }
 
   const generate = () => {
@@ -202,12 +213,35 @@ export default function GeneratorVIew() {
     setEntities(entitiesUpdate);
   }
 
-  const onSelectDataPatternFieldKeyChange = (index: number, fieldId: string, e: any) => {
+  const onSelectDataPatternFieldKeyChange = (index: number, fieldId: string, fieldKey: string, e: any) => {
     let newDataPattern = { ...entities }[index].dataPattern;
+    // HH: In most places I use the fieldId so the user can't break any functionality. However in some cases I reference fieldKey such as when update
+    // the gsi's on a field change below, and since the user can update that they can cause some weird behaviour if they change a fieldKey to match
+    // an existing field. So I add the protection below.
+    for (let i = 0; i < newDataPattern.fields.length; i++) {
+      if (newDataPattern.fields[i].key === e.target.value) {
+        return;
+      }
+    }
     newDataPattern.fields = newDataPattern.fields.map((field) => {
       // Find the field thats being updated
       if (field.id === fieldId) {
         field.key = e.target.value;
+        // When we change a field we also need to change it in any global secondary indexes
+        newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((gsi: any) => {
+          ["pk", "sk"].forEach((type: string) => {
+            gsi[type] = gsi[type].map((variable) => {
+              if (variable === `$${fieldKey}`) {
+                return `\$${e.target.value}`;
+              }
+              if (variable === `#${fieldKey.toUpperCase()}#`) {
+                return `#${e.target.value.toUpperCase()}#`;
+              }
+              return variable;
+            })
+          })
+          return gsi;
+        })
       }
       return field;
     })
@@ -230,15 +264,25 @@ export default function GeneratorVIew() {
     setEntities(entitiesUpdate);
   }
 
-  const onSelectDataPatternFieldRemove = (index: number, fieldId: string, e: any) => {
+  const onSelectDataPatternFieldRemove = (index: number, fieldId: string, fieldKey: string, e: any) => {
     let newDataPattern = { ...entities }[index].dataPattern;
     newDataPattern.fields = newDataPattern.fields.filter((field) => {
       // Find the field thats being removed
       if (field.id === fieldId) {
+        // When we remove a field we also need to remove it from any global secondary indexes
+        newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((gsi: any) => {
+          ["pk", "sk"].forEach((type: string) => {
+            gsi[type] = gsi[type].filter((variable) => {
+              return (variable !== `$${fieldKey}` && variable !== `#${fieldKey.toUpperCase()}#`);
+            })
+          })
+          return gsi;
+        })
         return;
       }
       return field;
     })
+
     let entitiesUpdate = Object.values({ ...entities });
     entitiesUpdate[index].dataPattern = newDataPattern;
     setEntities(entitiesUpdate);
@@ -252,7 +296,21 @@ export default function GeneratorVIew() {
     setEntities(entitiesUpdate);
   }
 
-  const onSelectDataPatternGlobalSecondaryIndexTextChange = (index: number, globalSecondaryIndexId: string, e: any, updateField) => {
+  const onSelectDataPatternGlobalSecondaryIndexTextChange = (index: number, globalSecondaryIndexId: string, e: any, updateField: string) => {
+    let newDataPattern = { ...entities }[index].dataPattern;
+    newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((globalSecondaryIndex) => {
+      // Find the global secondary index thats being updated
+      if (globalSecondaryIndex.id === globalSecondaryIndexId) {
+        globalSecondaryIndex[updateField] = e.target.value;
+      }
+      return globalSecondaryIndex;
+    })
+    let entitiesUpdate = Object.values({ ...entities });
+    entitiesUpdate[index].dataPattern = newDataPattern;
+    setEntities(entitiesUpdate);
+  }
+
+  const onSelectDataPatternGlobalSecondaryIndexSelectChange = (index: number, globalSecondaryIndexId: string, e: any, updateField: string) => {
     let newDataPattern = { ...entities }[index].dataPattern;
     newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((globalSecondaryIndex) => {
       // Find the global secondary index thats being updated
@@ -282,7 +340,7 @@ export default function GeneratorVIew() {
 
   const onSelectDataPatternGlobalSecondaryIndexAdd = (index: number, e: any) => {
     let newDataPattern = { ...entities }[index].dataPattern;
-    newDataPattern.globalSecondaryIndexes.push({ id: uuidv4(), key: `GSI${newDataPattern.globalSecondaryIndexes.length + 1}`, pk: "", sk: "" });
+    newDataPattern.globalSecondaryIndexes.push({ id: uuidv4(), key: `GSI${newDataPattern.globalSecondaryIndexes.length + 1}`, pk: [], sk: [] });
     let entitiesUpdate = Object.values({ ...entities });
     entitiesUpdate[index].dataPattern = newDataPattern;
     setEntities(entitiesUpdate);
@@ -292,11 +350,27 @@ export default function GeneratorVIew() {
     setCurrentTabIndex(tabIndex);
   }
 
+  const globalSecondaryIndexOptions: any = [<MenuItem value={`#${entities[currentTabIndex].hash}#`}>Entity Hash</MenuItem>];
+  entities[currentTabIndex].dataPattern.fields.map((field) => {
+    globalSecondaryIndexOptions.push(<MenuItem value={`\$${field.key}`}>{field.key}</MenuItem>)
+    globalSecondaryIndexOptions.push(<MenuItem value={`#${field.key.toUpperCase()}#`}>{field.key} Hash</MenuItem>)
+  })
+  if (entities[currentTabIndex].tenantId) {
+    globalSecondaryIndexOptions.push(<MenuItem value={"$tenantId"}>TenantId</MenuItem>);
+    globalSecondaryIndexOptions.push(<MenuItem value={"#T#"}>Tenant Hash</MenuItem>);
+  }
+
+
   // TODO: HH: Move some of the items rendered below into their own components and pull them in as this file is rather bloated now
   return (<React.Fragment>
     <Box>
       <h1>Generator</h1>
-      <Button sx={{ position: "relative", top: "-65px", float: "right" }} color={"primary"} variant="contained" onClick={download} disabled={_.isEmpty(compiledTemplates)}>Download</Button>
+      <Box sx={{ position: "relative", top: "-65px", float: "right" }}>
+        <Button sx={{ margin: "0 5px" }} color={"primary"} variant="contained" onClick={load} disabled={_.isEmpty(compiledTemplates)}>Load</Button>
+        <Button sx={{ margin: "0 5px" }} color={"primary"} variant="contained" onClick={save} disabled={_.isEmpty(compiledTemplates)}>Save</Button>
+        <Button sx={{ margin: "0 5px" }} color={"primary"} variant="contained" onClick={download} disabled={_.isEmpty(compiledTemplates)}>Download</Button>
+      </Box>
+
     </Box>
     <Tabs value={currentTabIndex} onChange={handleTabChange}>
       {entities.map((entity) => {
@@ -362,7 +436,7 @@ export default function GeneratorVIew() {
         {entities[currentTabIndex].dataPattern?.fields.map((field) => {
           return <Box key={field.id}>
             <TextField name={"key"} value={field.key} disabled={field.id === entities[currentTabIndex].dataPattern.fields[0].id} onChange={(e) => {
-              onSelectDataPatternFieldKeyChange(currentTabIndex, field.id, e);
+              onSelectDataPatternFieldKeyChange(currentTabIndex, field.id, field.key, e);
             }} />
             <TextField name={"type"} value={field.type} disabled={field.id === entities[currentTabIndex].dataPattern.fields[0].id} onChange={(e) => {
               onSelectDataPatternFieldTypeChange(currentTabIndex, field.id, e);
@@ -372,7 +446,7 @@ export default function GeneratorVIew() {
               <MenuItem value="number">number</MenuItem>
             </TextField>
             {field.id !== entities[currentTabIndex].dataPattern.fields[0].id && <Button variant="contained" color='error' onClick={(e) => {
-              onSelectDataPatternFieldRemove(currentTabIndex, field.id, e);
+              onSelectDataPatternFieldRemove(currentTabIndex, field.id, field.key, e);
             }}>Remove</Button>}
           </Box>
         })}
@@ -382,15 +456,27 @@ export default function GeneratorVIew() {
         <h3>Global Secondary Indexes</h3>
         {entities[currentTabIndex].dataPattern?.globalSecondaryIndexes.map((globalSecondaryIndex, index) => {
           return <Box key={globalSecondaryIndex.id}>
-            <TextField name={"key"} value={globalSecondaryIndex.key} disabled onChange={(e) => {
+            <TextField name={"key"} label={"Key"} value={globalSecondaryIndex.key} disabled onChange={(e) => {
               onSelectDataPatternGlobalSecondaryIndexTextChange(currentTabIndex, globalSecondaryIndex.id, e, "key");
             }} />
-            <TextField name={"pk"} value={globalSecondaryIndex.pk} onChange={(e) => {
-              onSelectDataPatternGlobalSecondaryIndexTextChange(currentTabIndex, globalSecondaryIndex.id, e, "pk");
-            }} />
-            <TextField name={"sk"} value={globalSecondaryIndex.sk} onChange={(e) => {
-              onSelectDataPatternGlobalSecondaryIndexTextChange(currentTabIndex, globalSecondaryIndex.id, e, "sk");
-            }} />
+            {/* TODO: For some reason label isn't working on the select field */}
+            PK:
+            <Select name={"pk"} multiple value={globalSecondaryIndex.pk} onChange={(e) => {
+              onSelectDataPatternGlobalSecondaryIndexSelectChange(currentTabIndex, globalSecondaryIndex.id, e, "pk");
+            }} renderValue={(variable) => {
+              return variable.join("");
+            }} >
+              {globalSecondaryIndexOptions}
+            </Select>
+            {/* TODO: For some reason label isn't working on the select field */}
+            SK:
+            <Select name={"sk"} multiple value={globalSecondaryIndex.sk} onChange={(e) => {
+              onSelectDataPatternGlobalSecondaryIndexSelectChange(currentTabIndex, globalSecondaryIndex.id, e, "sk");
+            }} renderValue={(variable) => {
+              return variable.join("");
+            }} >
+              {globalSecondaryIndexOptions}
+            </Select>
             {index === entities[currentTabIndex].dataPattern?.globalSecondaryIndexes.length - 1 && index !== 0 && <Button variant="contained" color='error' onClick={(e) => {
               onSelectDataPatternGlobalSecondaryIndexRemove(currentTabIndex, globalSecondaryIndex.id, e);
             }}>Remove</Button>}
@@ -403,13 +489,13 @@ export default function GeneratorVIew() {
       <Box>
         <h2>Preview</h2>
         {compiledTemplates[entities[currentTabIndex]?.name] && compiledTemplates[entities[currentTabIndex].name].map((compiledTemplate) => {
-          const { name, value, language } = compiledTemplate;
+          const { name, value, language, type } = compiledTemplate;
           return <Accordion key={name}>
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
               id={name}
             >
-              {name}
+              {`${type}: ${name}`}
             </AccordionSummary>
             <AccordionDetails
               id={name}

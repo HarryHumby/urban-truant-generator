@@ -1,13 +1,13 @@
 export default `#set( $et = "<% upperCaseName %>")
 #set( $prefix_ = "<% hash %>")
 
-<% if tenantId #set( $T_HASH_ = "#T#") %>
+<% if tenantId #set( $tenantId_HASH = "#T#") %>
 <% if tenantId #set( $tenantId_ = $util.defaultIfNullOrEmpty($context.identity.claims.get("custom:tenantId"), $ctx.args.input.tenantId)) %>
 <% if tenantId #if( $util.isNullOrEmpty($tenantId_) ) %>
 <% if tenantId 	$util.error("Tennant is required") %>
 <% if tenantId #end %>
 <% if tenantId #set( $obj.tenantId = $tenantId_ ) %>
-<% if tenantId #set( $pk = "$T_HASH_$tenantId_$prefix_") %>
+<% if tenantId #set( $pk = "$tenantId_HASH$tenantId_$prefix_") %>
 <% if !tenantId #set( $pk = "$prefix_") %>
 
 // TODO: HH: Setup GSI1 adn GSI2 correctly
