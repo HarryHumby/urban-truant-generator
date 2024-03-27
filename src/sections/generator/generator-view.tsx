@@ -26,8 +26,6 @@ import "prismjs/themes/prism-tomorrow.css";
 import uuidv4 from 'src/utils/uuidv4';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-// $TenantId_HASH_$tenantId_$prefix_
-// $prefix_$id
 export default function GeneratorVIew() {
   // TODO: HH: Add a save and a load entities
   const [entities, setEntities] = useState([{
@@ -55,7 +53,7 @@ export default function GeneratorVIew() {
   const [currentTabIndex, setCurrentTabIndex] = useState(0);
 
   // TODO: HH: Move this into a seperate file
-  // Vtl is not supported atm, javascript colours look decent
+  // HH: Vtl is not supported atm, javascript colours look decent
   const activeTemplates = [
     { name: "schema", type: "backend", path: "api/<% camelCaseName %>/base/schema.graphql", value: apiBaseSchemaTemplate, language: "javascript" },
     { name: "mappings", type: "backend", path: "api/<% camelCaseName %>/base/mappings.yml", value: apiBaseMappingsTemplate, language: "javascript" },
@@ -165,33 +163,33 @@ export default function GeneratorVIew() {
         if (templateStatements && templateStatements.length) {
           templateStatements.forEach((templateStatement) => {
             const splitTemplateStatement = templateStatement.split(" ");
-            // remove <%,if,%>  
+            // HH: remove <%,if,%>  
             splitTemplateStatement.shift();
             const statement = splitTemplateStatement.shift();
             splitTemplateStatement.pop();
-            // get the field and the string to use if truthy
+            // HH: get the field and the string to use if truthy
             const templateDataField = splitTemplateStatement.shift();
             const templateDataInsert = splitTemplateStatement.join(" ");
             if (templateDataField?.charAt(0) === "!") {
               if (templateData[templateDataField.slice(1)]) {
-                // if field is truthy remove the string
+                // HH: if field is truthy remove the string
                 entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, "");
               } else {
-                // if field is falsy keep the string to the right
+                // HH: if field is falsy keep the string to the right
                 entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, templateDataInsert);
               }
             } else {
               if (templateData[templateDataField]) {
-                // if field is truthy keep the string to the right
+                // HH: if field is truthy keep the string to the right
                 entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, templateDataInsert);
               } else {
-                // if field is falsy remove the string
+                // HH: if field is falsy remove the string
                 entityCompiledTemplate = entityCompiledTemplate.replace(templateStatement, "");
               }
             }
           })
         }
-        // remove the blocks of linebreaks that results when removing content from the template
+        // HH: remove the blocks of linebreaks that results when removing content from the template
         entityCompiledTemplate = entityCompiledTemplate.replace(/\n+/g, "\n");
         return { name, value: entityCompiledTemplate, language, path, type };
       })
@@ -203,7 +201,24 @@ export default function GeneratorVIew() {
 
   const onTextChange = (index: number, e: any) => {
     let entitiesUpdate = Object.values({ ...entities });
-    entitiesUpdate[index][e.target.name] = e.target.value;
+    let newValue = e.target.value;
+    if (e.target.name === "hash") {
+      // HH: hash should always be uppercase
+      newValue = newValue.toUpperCase();
+      // HH: When we change hash we also need to change it in any global secondary indexes
+      entitiesUpdate[currentTabIndex].dataPattern.globalSecondaryIndexes = entitiesUpdate[currentTabIndex].dataPattern.globalSecondaryIndexes.map((gsi: any) => {
+        ["pk", "sk"].forEach((type: string) => {
+          gsi[type] = gsi[type].map((variable) => {
+            if (variable === `#${entitiesUpdate[index][e.target.name]}#`) {
+              return `#${e.target.value.toUpperCase()}#`;
+            }
+            return variable;
+          })
+        })
+        return gsi;
+      })
+    }
+    entitiesUpdate[index][e.target.name] = newValue;
     setEntities(entitiesUpdate);
   };
 
@@ -224,10 +239,10 @@ export default function GeneratorVIew() {
       }
     }
     newDataPattern.fields = newDataPattern.fields.map((field) => {
-      // Find the field thats being updated
+      // HH: Find the field thats being updated
       if (field.id === fieldId) {
         field.key = e.target.value;
-        // When we change a field we also need to change it in any global secondary indexes
+        // HH: When we change a field we also need to change it in any global secondary indexes
         newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((gsi: any) => {
           ["pk", "sk"].forEach((type: string) => {
             gsi[type] = gsi[type].map((variable) => {
@@ -253,7 +268,7 @@ export default function GeneratorVIew() {
   const onSelectDataPatternFieldTypeChange = (index: number, fieldId: string, e: any) => {
     let newDataPattern = { ...entities }[index].dataPattern;
     newDataPattern.fields = newDataPattern.fields.map((field) => {
-      // Find the field thats being updated
+      // HH: Find the field thats being updated
       if (field.id === fieldId) {
         field.type = e.target.value;
       }
@@ -267,9 +282,9 @@ export default function GeneratorVIew() {
   const onSelectDataPatternFieldRemove = (index: number, fieldId: string, fieldKey: string, e: any) => {
     let newDataPattern = { ...entities }[index].dataPattern;
     newDataPattern.fields = newDataPattern.fields.filter((field) => {
-      // Find the field thats being removed
+      // HH: Find the field thats being removed
       if (field.id === fieldId) {
-        // When we remove a field we also need to remove it from any global secondary indexes
+        // HH: When we remove a field we also need to remove it from any global secondary indexes
         newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((gsi: any) => {
           ["pk", "sk"].forEach((type: string) => {
             gsi[type] = gsi[type].filter((variable) => {
@@ -299,7 +314,7 @@ export default function GeneratorVIew() {
   const onSelectDataPatternGlobalSecondaryIndexTextChange = (index: number, globalSecondaryIndexId: string, e: any, updateField: string) => {
     let newDataPattern = { ...entities }[index].dataPattern;
     newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((globalSecondaryIndex) => {
-      // Find the global secondary index thats being updated
+      // HH: Find the global secondary index thats being updated
       if (globalSecondaryIndex.id === globalSecondaryIndexId) {
         globalSecondaryIndex[updateField] = e.target.value;
       }
@@ -313,7 +328,7 @@ export default function GeneratorVIew() {
   const onSelectDataPatternGlobalSecondaryIndexSelectChange = (index: number, globalSecondaryIndexId: string, e: any, updateField: string) => {
     let newDataPattern = { ...entities }[index].dataPattern;
     newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.map((globalSecondaryIndex) => {
-      // Find the global secondary index thats being updated
+      // HH: Find the global secondary index thats being updated
       if (globalSecondaryIndex.id === globalSecondaryIndexId) {
         globalSecondaryIndex[updateField] = e.target.value;
       }
@@ -327,7 +342,7 @@ export default function GeneratorVIew() {
   const onSelectDataPatternGlobalSecondaryIndexRemove = (index: number, globalSecondaryIndexId: string, e: any) => {
     let newDataPattern = { ...entities }[index].dataPattern;
     newDataPattern.globalSecondaryIndexes = newDataPattern.globalSecondaryIndexes.filter((globalSecondaryIndex) => {
-      // Find the global secondary index thats being removed
+      // HH: Find the global secondary index thats being removed
       if (globalSecondaryIndex.id === globalSecondaryIndexId) {
         return;
       }
@@ -459,7 +474,7 @@ export default function GeneratorVIew() {
             <TextField name={"key"} label={"Key"} value={globalSecondaryIndex.key} disabled onChange={(e) => {
               onSelectDataPatternGlobalSecondaryIndexTextChange(currentTabIndex, globalSecondaryIndex.id, e, "key");
             }} />
-            {/* TODO: For some reason label isn't working on the select field */}
+            {/* TODO: HH:For some reason label isn't working on the select field */}
             PK:
             <Select name={"pk"} multiple value={globalSecondaryIndex.pk} onChange={(e) => {
               onSelectDataPatternGlobalSecondaryIndexSelectChange(currentTabIndex, globalSecondaryIndex.id, e, "pk");
@@ -468,7 +483,7 @@ export default function GeneratorVIew() {
             }} >
               {globalSecondaryIndexOptions}
             </Select>
-            {/* TODO: For some reason label isn't working on the select field */}
+            {/* TODO: HH:For some reason label isn't working on the select field */}
             SK:
             <Select name={"sk"} multiple value={globalSecondaryIndex.sk} onChange={(e) => {
               onSelectDataPatternGlobalSecondaryIndexSelectChange(currentTabIndex, globalSecondaryIndex.id, e, "sk");
