@@ -1,6 +1,6 @@
 'use client';
 
-import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails, MenuItem, Tabs, Tab, Select, InputLabel } from '@mui/material';
+import { TextField, Button, Box, Checkbox, Accordion, AccordionSummary, AccordionDetails, MenuItem, Tabs, Tab, Select } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import React, { useState, useEffect } from 'react';
 // TODO: HH: Move these into an index and import all from one file
@@ -20,6 +20,7 @@ import uiBaseIndexTemplate from 'src/codetemplates/ui/base/index';
 import uiBaseTypesTemplate from 'src/codetemplates/ui/base/types';
 import uiClientTemplate from 'src/codetemplates/ui/client';
 import uiIndexTemplate from 'src/codetemplates/ui/index';
+import { AWSService } from 'src/services/AWS/index';
 import _ from 'lodash';
 import Prism from 'prismjs';
 import "prismjs/themes/prism-tomorrow.css";
@@ -27,24 +28,26 @@ import uuidv4 from 'src/utils/uuidv4';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
-export default function GeneratorVIew() {
-  // TODO: HH: Add a save and a load entities
-  const [entities, setEntities] = useState([{
-    name: "Instructor",
-    hash: "I",
-    dataPattern: {
-      fields: [{ id: uuidv4(), key: "id", type: "string" }],
-      pk: ["#T#", "$tenantId", "#I#"],
-      sk: ["#I#", "$id"],
-      globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: ["#T#", "$tenantId", "$id"], sk: ["#I#", "$id"] }]
-    },
-    tenantId: true,
-    limit: "20"
-  }]);
+type IEntity = {
+  name: string,
+  hash: string,
+  dataPattern: {
+    fields: Array<any>,
+    pk: Array<string>,
+    sk: Array<string>,
+    globalSecondaryIndexes: Array<any>,
+  },
+  tenantId: boolean,
+  limit: string
+}
 
+export default function GeneratorVIew() {
+  // TODO: HH: Implement a concept of version history on entities so you could undo your last change
+  const [entities, setEntities] = useState<Array<IEntity>>([]);
   const [templateData, setTemplateData] = useState({});
   const [compiledTemplates, setCompiledTemplates] = useState([]);
   const [currentTabIndex, setCurrentTabIndex] = useState(0);
+  const [configurationList, setConfigurationList] = useState([]);
 
   // TODO: HH: Move this into a seperate file
   // HH: Vtl is not supported atm, javascript colours look decent
@@ -81,10 +84,9 @@ export default function GeneratorVIew() {
       })
 
       // TODO: HH: Move the different types like string and boolean into its own file
-
-      newEntityTemplateData["camelCaseName"] = _.camelCase(entity.name);
-      newEntityTemplateData["pascalCaseName"] = _.capitalize(_.camelCase(entity.name));
-      newEntityTemplateData["upperCaseName"] = entity.name.toUpperCase();
+      newEntityTemplateData["camelCaseName"] = _.camelCase(entity.name.replaceAll(" ", ""));
+      newEntityTemplateData["pascalCaseName"] = _.capitalize(_.camelCase(entity.name.replaceAll(" ", "")));
+      newEntityTemplateData["upperCaseName"] = entity.name.replaceAll(" ", "").toUpperCase();
       newEntityTemplateData["hash"] = `#${entity.hash}#`;
       newEntityTemplateData["tenantHash"] = entity.tenantId ? "#T#" : "";
       newEntityTemplateData["tenantId"] = entity.tenantId ? "$tenantId" : "";
@@ -110,9 +112,12 @@ export default function GeneratorVIew() {
 
       newTemplateData[entity.name] = newEntityTemplateData;
     })
-
     setTemplateData(newTemplateData);
   }
+
+  useEffect(() => {
+    loadConfigurationList();
+  }, []);
 
   useEffect(() => {
     updateTemplateData();
@@ -140,12 +145,25 @@ export default function GeneratorVIew() {
     });
   }
 
-  const save = () => {
-    //  TODO: HH: send entities to s3.
+  const saveConfiguration = async () => {
+    await AWSService.S3.putObject({ "body": JSON.stringify(entities), key: `[${entities.map((x) => { return x.name }).join(", ")}].txt` });
+    loadConfigurationList();
   }
 
-  const load = () => {
-    //  TODO: HH: get entities to s3 and display them.
+  const loadConfiguration = async (e) => {
+    const response = await AWSService.S3.getObject({ key: `${e.target.name}.txt` });
+    if (response && response.data && response.data.value) {
+      // HH: Copy current entities to clipboard
+      navigator.clipboard.writeText(JSON.stringify(entities))
+      setEntities(JSON.parse((atob(response?.data?.value))));
+    }
+  }
+
+  const loadConfigurationList = async () => {
+    const response = await AWSService.S3.getObjects({});
+    if (response && response.Contents) {
+      setConfigurationList(response.Contents.map((x) => { return x.Key.replace(".txt", "") }));
+    }
   }
 
   const generate = () => {
@@ -235,6 +253,37 @@ export default function GeneratorVIew() {
   const onCheckboxChange = (index: number, e: any) => {
     let entitiesUpdate = Object.values({ ...entities });
     entitiesUpdate[index][e.target.name] = e.target.checked;
+    if (e.target.checked) {
+      // HH: Trying to be helpful as usually if you're adding tenantId you're going to put it on pk, and the same for the pk in the gsi's
+      entitiesUpdate[index].dataPattern.pk.unshift("$tenantId");
+      entitiesUpdate[index].dataPattern.pk.unshift("#T#");
+      entitiesUpdate[index].dataPattern.globalSecondaryIndexes.map((gsi) => {
+        gsi.pk.unshift("$tenantId");
+        gsi.pk.unshift("#T#");
+        return gsi;
+      })
+    } else {
+      // HH: Remove any tenantId from the pk, sk, and gsi's
+      ["pk", "sk"].map((field) => {
+        entitiesUpdate[index].dataPattern[field] = entitiesUpdate[index].dataPattern[field].filter((variable) => {
+          if (variable === "$tenantId" || variable === "#T#") {
+            return;
+          }
+          return variable;
+        })
+      })
+      entitiesUpdate[index].dataPattern.globalSecondaryIndexes = entitiesUpdate[index].dataPattern.globalSecondaryIndexes.map((gsi) => {
+        ["pk", "sk"].map((field) => {
+          gsi[field] = gsi[field].filter((variable) => {
+            if (variable === "$tenantId" || variable === "#T#") {
+              return;
+            }
+            return variable;
+          })
+        })
+        return gsi;
+      })
+    }
     setEntities(entitiesUpdate);
   }
 
@@ -373,7 +422,12 @@ export default function GeneratorVIew() {
 
   const onSelectDataPatternGlobalSecondaryIndexAdd = (index: number, e: any) => {
     let newDataPattern = { ...entities }[index].dataPattern;
-    newDataPattern.globalSecondaryIndexes.push({ id: uuidv4(), key: `GSI${newDataPattern.globalSecondaryIndexes.length + 1}`, pk: [], sk: [] });
+    let newGSI = { id: uuidv4(), key: `GSI${newDataPattern.globalSecondaryIndexes.length + 1}`, pk: ["#ID#"], sk: ["#ID#", "$id"] };
+    if (entities[index].tenantId) {
+      newGSI.pk.unshift("$tenantId");
+      newGSI.pk.unshift("#T#");
+    }
+    newDataPattern.globalSecondaryIndexes.push(newGSI);
     let entitiesUpdate = Object.values({ ...entities });
     entitiesUpdate[index].dataPattern = newDataPattern;
     setEntities(entitiesUpdate);
@@ -383,53 +437,92 @@ export default function GeneratorVIew() {
     setCurrentTabIndex(tabIndex);
   }
 
-  const globalSecondaryIndexOptions: any = [<MenuItem value={`#${entities[currentTabIndex].hash}#`}>Entity Hash</MenuItem>];
-  entities[currentTabIndex].dataPattern.fields.map((field) => {
-    globalSecondaryIndexOptions.push(<MenuItem value={`\$${field.key}`}>{field.key}</MenuItem>)
-    globalSecondaryIndexOptions.push(<MenuItem value={`#${field.key.toUpperCase()}#`}>{field.key} Hash</MenuItem>)
-  })
-  if (entities[currentTabIndex].tenantId) {
-    globalSecondaryIndexOptions.push(<MenuItem value={"$tenantId"}>TenantId</MenuItem>);
-    globalSecondaryIndexOptions.push(<MenuItem value={"#T#"}>Tenant Hash</MenuItem>);
+  const createEntity = () => {
+    let entitiesUpdate = [...entities];
+    entitiesUpdate.push({
+      name: `New${uuidv4()}`,
+      hash: "N",
+      dataPattern: {
+        fields: [{ id: uuidv4(), key: "id", type: "string" }],
+        pk: ["#T#", "$tenantId", "#ID#"],
+        sk: ["#ID#", "$id"],
+        globalSecondaryIndexes: [{ id: uuidv4(), key: "GSI1", pk: ["#T#", "$tenantId", "#ID#"], sk: ["#ID#", "$id"] }]
+      },
+      tenantId: true,
+      limit: "20"
+    })
+    setEntities(entitiesUpdate);
+    setCurrentTabIndex(entitiesUpdate.length - 1)
   }
 
+  const deleteEntity = (e: any) => {
+    let entitiesUpdate = [...entities];
+    entitiesUpdate.splice(currentTabIndex, 1);
+    // HH: We need to check for any dataFields on other entities that reference the entity we are deleting as it's type
+    entitiesUpdate = entitiesUpdate.map((entity) => {
+      entity.dataPattern.fields = entity.dataPattern.fields.map((field) => {
+        entities.forEach((ent) => {
+          if (field.type === _.capitalize(_.camelCase(ent.name.replaceAll(" ", ""))) || field.type === `[${_.capitalize(_.camelCase(ent.name.replaceAll(" ", "")))}]`) {
+            // HH: We need to replace it, defaulting to string for now
+            field.type = "string";
+          }
+        })
+        return field;
+      })
+      return entity;
+    })
+    setEntities(entitiesUpdate);
+    setCurrentTabIndex(0);
+  }
 
-  // TODO: HH: Move some of the items rendered below into their own components and pull them in as this file is rather bloated now
-  return (<React.Fragment>
-    <Box>
-      <h1>Generator</h1>
-      <Box sx={{ position: "relative", top: "-65px", float: "right" }}>
-        <Button sx={{ margin: "0 5px" }} color={"primary"} variant="contained" onClick={load} disabled={_.isEmpty(compiledTemplates)}>Load</Button>
-        <Button sx={{ margin: "0 5px" }} color={"primary"} variant="contained" onClick={save} disabled={_.isEmpty(compiledTemplates)}>Save</Button>
-        <Button sx={{ margin: "0 5px" }} color={"primary"} variant="contained" onClick={download} disabled={_.isEmpty(compiledTemplates)}>Download</Button>
-      </Box>
+  let globalSecondaryIndexOptions: any;
+  if (entities && entities.length) {
+    globalSecondaryIndexOptions = [<MenuItem key={`#${entities[currentTabIndex].hash}#`} value={`#${entities[currentTabIndex].hash}#`}>Entity Hash</MenuItem>];
+    entities[currentTabIndex].dataPattern.fields.map((field) => {
+      globalSecondaryIndexOptions.push(<MenuItem key={`\$${field.key}`} value={`\$${field.key}`}>{field.key}</MenuItem>)
+      globalSecondaryIndexOptions.push(<MenuItem key={`#${field.key.toUpperCase()}#`} value={`#${field.key.toUpperCase()}#`}>{field.key} Hash</MenuItem>)
+    })
+    if (entities[currentTabIndex].tenantId) {
+      globalSecondaryIndexOptions.push(<MenuItem key={"$tenantId"} value={"$tenantId"}>TenantId</MenuItem>);
+      globalSecondaryIndexOptions.push(<MenuItem key={"#T#"} value={"#T#"}>Tenant Hash</MenuItem>);
+    }
+  }
 
-    </Box>
-    <Tabs value={currentTabIndex} onChange={handleTabChange}>
-      {entities.map((entity) => {
-        return <Tab key={entity.name} label={entity.name} />
-      })}
-    </Tabs>
-    <Box>
+  let entityEditor;
+
+  if (entities && entities.length) {
+    let dataFieldTypeOptions = [<MenuItem value="string" >string</MenuItem>,
+    <MenuItem value="boolean">boolean</MenuItem>,
+    <MenuItem value="number">number</MenuItem >]
+    entities.forEach((entity, i) => {
+      // HH: Populate the type options with other created entities
+      if (i !== currentTabIndex) {
+        let name = _.capitalize(_.camelCase(entity.name.replaceAll(" ", "")));
+        dataFieldTypeOptions.push(<MenuItem key={name} value={name}>{entity.name}</MenuItem>);
+        dataFieldTypeOptions.push(<MenuItem key={name} value={`[${name}]`}>[{entity.name}]</MenuItem>);
+      }
+    })
+
+    entityEditor = <Box>
       {/* Removed for now as the templateData box is a little glitchy between rerenders */}
       {/* {templateData[entities[currentTabIndex]?.name] && <Accordion>
-        <AccordionSummary
-          expandIcon={<ExpandMoreIcon />}
-          id={"templateData"}
-        >
-          Template Data
-        </AccordionSummary>
-        <AccordionDetails
-          id={"templateData"}
-        >
-          <Box sx={{ bgcolor: "primary.dark", borderRadius: 2, padding: "20px" }}>
-            {Object.entries(templateData[entities[currentTabIndex].name]).filter((x) => { return x[1] }).map((template) => {
-              const [key, value] = template;
-              return <p key={key}>{key}: {value}</p>
-            })}
-          </Box>
-        </AccordionDetails>
-      </Accordion>} */}
+    <AccordionSummary
+      expandIcon={<ExpandMoreIcon />}
+      id={"templateData"}
+    >
+      Template Data
+    </AccordionSummary>
+    <AccordionDetails
+      id={"templateData"}
+    >
+      <Box sx={{ bgcolor: "primary.dark", borderRadius: 2, padding: "20px" }}>
+        {Object.entries(templateData[entities[currentTabIndex].name]).filter((x) => { return x[1] }).map((template) => {
+          const [key, value] = template;
+          return <p key={key}>{key}: {value}</p>
+        })}
+      </Box>
+    </AccordionDetails>
+  </Accordion>} */}
 
       <Box>
         <h2>Configuration</h2>
@@ -474,9 +567,7 @@ export default function GeneratorVIew() {
             <TextField name={"type"} value={field.type} disabled={field.id === entities[currentTabIndex].dataPattern.fields[0].id} onChange={(e) => {
               onSelectDataPatternFieldTypeChange(currentTabIndex, field.id, e);
             }} select>
-              <MenuItem value="string" >string</MenuItem>
-              <MenuItem value="boolean">boolean</MenuItem>
-              <MenuItem value="number">number</MenuItem>
+              {dataFieldTypeOptions}
             </TextField>
             {field.id !== entities[currentTabIndex].dataPattern.fields[0].id && <Button variant="contained" color='error' onClick={(e) => {
               onSelectDataPatternFieldRemove(currentTabIndex, field.id, field.key, e);
@@ -540,6 +631,7 @@ export default function GeneratorVIew() {
       </Box>
       <Box>
         <h2>Preview</h2>
+        {/* TODO: HH: Add tabs for backend and frontend */}
         {compiledTemplates[entities[currentTabIndex]?.name] && compiledTemplates[entities[currentTabIndex].name].map((compiledTemplate) => {
           const { name, value, language, type } = compiledTemplate;
           return <Accordion key={name}>
@@ -557,7 +649,35 @@ export default function GeneratorVIew() {
           </Accordion>
         })}
       </Box>
+    </Box>;
+  }
+
+  // TODO: HH: Move some of the components - and functions they require - below into their own files and pull them in as this file is *very* bloated now
+  return (<React.Fragment>
+    <Box>
+      <h1>Generator</h1>
+      <Box sx={{ position: "relative", top: "-65px", float: "right" }}>
+        <Button sx={{ margin: "0 5px" }} color={"primary"} variant={"contained"} onClick={() => { navigator.clipboard.writeText(JSON.stringify(entities)) }} disabled={_.isEmpty(compiledTemplates)}>Clipboard</Button>
+        <Button sx={{ margin: "0 5px" }} color={"primary"} variant={"contained"} onClick={saveConfiguration} disabled={_.isEmpty(compiledTemplates)}>Save</Button>
+        <Button sx={{ margin: "0 5px" }} color={"primary"} variant={"contained"} onClick={download} disabled={_.isEmpty(compiledTemplates)}>Download</Button>
+      </Box>
+      <Box>
+        {configurationList.map((configuration) => {
+          return <Button name={configuration} onClick={loadConfiguration} color={"secondary"} variant="contained" key={configuration}>{configuration}</Button>
+        })}
+      </Box>
+      <Box>
+        <Button onClick={createEntity} color={"primary"} variant={"contained"}>Create Entity</Button>
+        <Button onClick={deleteEntity} color={"error"} variant={"contained"}>Delete Entity</Button>
+      </Box>
+
     </Box>
+    <Tabs value={currentTabIndex} onChange={handleTabChange}>
+      {entities.map((entity) => {
+        return <Tab key={entity.name} label={entity.name} />
+      })}
+    </Tabs>
+    {entityEditor}
   </React.Fragment >
   );
 }

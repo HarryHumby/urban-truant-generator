@@ -10,7 +10,7 @@ export default `#set( $et = "<% upperCaseName %>")
 <% if tenantId #set( $pk = "$tenantId_HASH$tenantId_$prefix_") %>
 <% if !tenantId #set( $pk = "$prefix_") %>
 
-// TODO: HH: Setup GSI1 adn GSI2 correctly
+## // TODO: HH: Setup GSI1 adn GSI2 correctly
 #if( $util.isNullOrEmpty($sk))
 	#set( $condition = "GSI1_PK = :pk" )
 	#set( $expressionValues = {":pk": { "S": "$pk" }})

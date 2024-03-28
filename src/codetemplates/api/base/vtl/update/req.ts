@@ -38,7 +38,7 @@ export default `#set( $id_ = $ctx.args.input.id )
 			#end
 		#end
 
-		// TODO: HH: Will need to add some logic for gsi's
+		## // TODO: HH: Will need to add some logic for gsi's
 	#end
 
 	#set( $savedOn = "so" )
